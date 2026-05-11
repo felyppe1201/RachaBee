@@ -3,7 +3,7 @@ export const themas = {
         primary:'#F9D902',
         secondary:'#ffffff',
         black:'#0A0A0A',
-        lightGray:'#d7d8d7',
+        lightGray:'#eceeec',
         gray:'gray',
         bgScreen:'#f1f7fa'
     }
