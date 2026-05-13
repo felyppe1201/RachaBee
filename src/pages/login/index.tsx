@@ -25,7 +25,7 @@ export default function Login() {
         setLoading(false);
 
         if (error) {
-            Alert.alert('Erro ao entrar', error.message);
+            Alert.alert('Erro ao entrar', 'E-mail ou senha incorretos.');
         }
     }
 
