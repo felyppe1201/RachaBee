@@ -1,6 +1,6 @@
 import React from "react";
 import { ActivityIndicator, Text, TouchableHighlightProps, TouchableOpacity } from "react-native";
-import { themas } from "../global/themes";
+import { themas } from "../../global/themes";
 
 type Props = TouchableHighlightProps & {
     text: string,
