@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
+// Cache
+import { clearAllCaches } from "../lib/cacheService";
+
 // useAuth | verifica e observa a sessão autenticada do usuário
 export function useAuth() {
   // sessão atual do usuário autenticado
@@ -14,7 +17,9 @@ export function useAuth() {
 
   useEffect(() => {
     // busca a sessão persistida ao montar o componente
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // guard: se não há sessão ativa e existirem caches, apaga tudo
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) await clearAllCaches();
       setSession(session);
       setLoading(false);
     });
