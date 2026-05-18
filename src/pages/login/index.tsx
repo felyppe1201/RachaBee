@@ -4,9 +4,9 @@ import { style } from "./styles";
 import Logo from "../../assets/logo.png";
 import { MaterialIcons, Octicons } from '@expo/vector-icons';
 import { themas } from "../../global/themes";
-import { Input } from "../../components/Input/Index";
-import { Button } from "../../components/Button/Index";
 import { supabase } from "../../lib/supabase";
+import { Input } from "../../components/Input.tsx"
+import { Button } from "../../components/Button.tsx";
 
 export default function Login() {
     const [email, setEmail] = useState('');
