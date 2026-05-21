@@ -8,7 +8,9 @@ import { ActivityIndicator, View } from "react-native";
 
 // Páginas
 import Login from "./src/pages/login";
-import Home from "./src/pages/home/home";
+
+// Navegação
+import TabNavigator from "./src/navigation/TabNavigator";
 
 // Hooks
 import { useAuth } from "./src/hooks/useAuth";
@@ -43,7 +45,7 @@ function AppContent() {
   }
 
   // Menu principal da aplicação
-  return <Home />;
+  return <TabNavigator />;
 }
 
 export default function App() {
