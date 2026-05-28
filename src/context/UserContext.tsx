@@ -13,7 +13,7 @@ const CACHE_KEY_SELF = "@cache:user:self";
 // dados do perfil do usuário, espelhados da tabela users
 export type UserProfile = {
   id: string;
-  nome: string;
+  name: string;
   email: string;
   avatar_url: string | null;
   created_at: string;
@@ -54,7 +54,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const { data, error } = await supabase
       .from("users")
-      .select("id, nome, email, avatar_url, created_at")
+      .select("id, name, email, avatar_url, created_at")
       .eq("id", userId)
       .single();
 
