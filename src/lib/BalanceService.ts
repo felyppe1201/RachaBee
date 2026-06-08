@@ -1,12 +1,12 @@
 import { supabase } from "./supabase";
-import { getCached, setCached } from "./cacheService";
+import { getCached, setCached, removeCached } from "./cacheService";
 import { UserBalance } from "../context/UserContext";
 
 const CACHE_KEY_BALANCE = "@cache:balance:self";
 
 // calculateBalance | chama a RPC e retorna o balance calculado
 export async function calculateBalance(): Promise<UserBalance> {
-  const { data, error } = await supabase.rpc("calculate_user_balance");
+  const { data, error } = await supabase.rpc("ActualGlobalBalance");
 
   if (error || !data) {
     console.log("Erro ao calcular balance:", error?.message);
@@ -31,6 +31,5 @@ export async function getBalance(): Promise<UserBalance> {
 
 // invalidateBalanceCache | força recálculo na próxima chamada
 export async function invalidateBalanceCache(): Promise<void> {
-  const { removeCached } = await import("./cacheService");
   await removeCached(CACHE_KEY_BALANCE);
 }
