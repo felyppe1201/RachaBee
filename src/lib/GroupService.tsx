@@ -89,7 +89,7 @@ async function requireAuthUserId(): Promise<string> {
     error,
   } = await supabase.auth.getUser();
 
-  if (error) throw error;
+  if (error) throwGroupServiceError("requireAuth", error);
   if (!user) throw new Error("Usuário não autenticado");
 
   return user.id;
@@ -128,6 +128,134 @@ function encodeInvitePayload(groupId: string, userId: string): string {
   return toBase64(`${groupId}${INVITE_SEPARATOR}${userId}`);
 }
 
+// Contexto da operacao para log e mensagem de erro no terminal
+type GroupServiceContext =
+  | "requireAuth"
+  | "createNewGroup"
+  | "readInviteCode"
+  | "joinGroup"
+  | "leaveGroup"
+  | "deleteGroup"
+  | "getGroups"
+  | "getGroupInfo"
+  | "createGroupInvite";
+
+// Mensagens de negocio ja adequadas ao usuario; repassadas sem traducao
+const KNOWN_USER_MESSAGES = [
+  "usuário não autenticado",
+  "código de convite inválido",
+  "convite inválido",
+  "você já faz parte deste grupo",
+  "grupo não encontrado",
+  "você não tem acesso a este grupo",
+  "apenas o criador do grupo pode excluí-lo",
+  "codificação de convite indisponível",
+  "decodificação de convite indisponível",
+];
+
+// extractErrorMessage | Obtem mensagem textual de qualquer erro
+// Unifica Error nativo e objetos de erro do Supabase/PostgREST.
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
+
+// extractErrorCode | Obtem codigo do erro quando disponivel
+// Usado para mapear falhas previstas do Postgres e do PostgREST.
+function extractErrorCode(error: unknown): string | undefined {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code: unknown }).code;
+    return code == null ? undefined : String(code);
+  }
+  return undefined;
+}
+
+// logGroupServiceError | Registra erro bruto no terminal para debug
+// Mantem contexto da operacao, codigo e mensagem original do servidor.
+function logGroupServiceError(context: GroupServiceContext, error: unknown): void {
+  const message = extractErrorMessage(error);
+  const code = extractErrorCode(error);
+
+  console.error(`[GroupService:${context}]`, error);
+  console.error(
+    `[GroupService:${context}] code=${code ?? "n/a"} message=${message}`
+  );
+}
+
+// resolveUserMessage | Traduz erro para mensagem amigavel ao usuario
+// Casos previstos recebem texto claro; casos nao previstos retornam a mensagem direta do servidor.
+function resolveUserMessage(error: unknown): string {
+  const message = extractErrorMessage(error);
+  const lower = message.toLowerCase();
+  const code = extractErrorCode(error);
+
+  if (KNOWN_USER_MESSAGES.some((known) => lower.includes(known))) {
+    return message;
+  }
+
+  if (lower.includes("infinite recursion")) {
+    return "Não foi possível concluir por um problema de permissão no servidor. Tente novamente mais tarde.";
+  }
+
+  if (
+    lower.includes("row-level security") ||
+    lower.includes("permission denied") ||
+    code === "42501"
+  ) {
+    return "Você não tem permissão para realizar esta ação.";
+  }
+
+  if (
+    lower.includes("jwt") ||
+    lower.includes("session") ||
+    lower.includes("token") ||
+    lower.includes("not authenticated") ||
+    lower.includes("invalid claim")
+  ) {
+    return "Sua sessão expirou. Faça login novamente.";
+  }
+
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("network request failed") ||
+    lower.includes("conexão") ||
+    lower.includes("conexao") ||
+    lower.includes("timeout") ||
+    lower.includes("timed out")
+  ) {
+    return "Sem conexão com a internet. Verifique sua rede e tente novamente.";
+  }
+
+  if (code === "23505") {
+    return "Esta ação já foi realizada anteriormente.";
+  }
+
+  if (code === "23503") {
+    return "Não foi possível concluir: algum dado relacionado não foi encontrado.";
+  }
+
+  if (code === "PGRST116") {
+    return "Registro não encontrado.";
+  }
+
+  return message || "Ocorreu um erro inesperado. Tente novamente.";
+}
+
+// throwGroupServiceError | Loga e propaga erro com mensagem para o usuario
+// Centraliza tratamento de falhas tecnicas em todas as operacoes do servico.
+function throwGroupServiceError(
+  context: GroupServiceContext,
+  error: unknown
+): never {
+  logGroupServiceError(context, error);
+  throw new Error(resolveUserMessage(error));
+}
+
 // decodeInvitePayload | Extrai groupId e userId do convite
 // Decodifica o Base64 e separa as partes do payload; usado em joinGroup e readInviteCode para validar o convite.
 function decodeInvitePayload(inviteCode: string): { groupId: string; userId: string } {
@@ -155,33 +283,16 @@ function decodeInvitePayload(inviteCode: string): { groupId: string; userId: str
 // Area do Usuario Logado | Interage com token e autentificacao ja existente
 
 // createNewGroup | Cria um novo grupo
-// Insere o grupo no banco e adiciona o criador como primeiro membro; se a inserção do membro falhar, reverte a criação do grupo.
+// Delega ao RPC create_group (SECURITY DEFINER), que usa auth.uid() para criar o grupo e adicionar o criador como membro.
 export async function createNewGroup(groupName: string): Promise<Group> {
-  // Id do usuario autenticado que sera o criador do grupo
-  const userId = await requireAuthUserId();
-
-  const { data: group, error: groupError } = await supabase
-    .from("groups")
-    .insert({
-      name: groupName,
-      created_by: userId,
-    })
-    .select("id, name, created_by, created_at")
-    .single();
-
-  if (groupError) throw groupError;
-
-  const { error: memberError } = await supabase.from("group_members").insert({
-    group_id: group.id,
-    user_id: userId,
+  const { data: group, error } = await supabase.rpc("create_group", {
+    group_name: groupName,
   });
 
-  if (memberError) {
-    await supabase.from("groups").delete().eq("id", group.id);
-    throw memberError;
-  }
+  if (error) throwGroupServiceError("createNewGroup", error);
+  if (!group) throw new Error("Não foi possível criar o grupo.");
 
-  return group;
+  return group as Group;
 }
 
 // readInviteCode | Lê o convite decodificado
@@ -198,7 +309,7 @@ export async function readInviteCode(
     .eq("id", userId)
     .maybeSingle();
 
-  if (userError) throw userError;
+  if (userError) throwGroupServiceError("readInviteCode", userError);
 
   const { data: group, error: groupError } = await supabase
     .from("groups")
@@ -206,7 +317,7 @@ export async function readInviteCode(
     .eq("id", groupId)
     .maybeSingle();
 
-  if (groupError) throw groupError;
+  if (groupError) throwGroupServiceError("readInviteCode", groupError);
   if (!user || !group) throw new Error("Convite inválido");
 
   return { user, group };
@@ -227,7 +338,7 @@ export async function joinGroup(inviteCode: string): Promise<GroupMember> {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (existingError) throw existingError;
+  if (existingError) throwGroupServiceError("joinGroup", existingError);
   if (existingMember) throw new Error("Você já faz parte deste grupo");
 
   const { data: group, error: groupError } = await supabase
@@ -236,7 +347,7 @@ export async function joinGroup(inviteCode: string): Promise<GroupMember> {
     .eq("id", groupId)
     .maybeSingle();
 
-  if (groupError) throw groupError;
+  if (groupError) throwGroupServiceError("joinGroup", groupError);
   if (!group) throw new Error("Grupo não encontrado");
 
   const { data: member, error: memberError } = await supabase
@@ -248,7 +359,7 @@ export async function joinGroup(inviteCode: string): Promise<GroupMember> {
     .select("id, group_id, user_id, joined_at")
     .single();
 
-  if (memberError) throw memberError;
+  if (memberError) throwGroupServiceError("joinGroup", memberError);
 
   return member;
 }
@@ -264,7 +375,7 @@ export async function leaveGroup(groupId: string): Promise<void> {
     .eq("group_id", groupId)
     .eq("user_id", userId);
 
-  if (error) throw error;
+  if (error) throwGroupServiceError("leaveGroup", error);
 }
 
 // deleteGroup | Exclui um grupo
@@ -278,9 +389,9 @@ export async function deleteGroup(groupId: string): Promise<void> {
     .eq("id", groupId)
     .single();
 
-  if (groupError) throw groupError;
+  if (groupError) throwGroupServiceError("deleteGroup", groupError);
   if (group.created_by !== userId) {
-    throw new Error("Apenas o criador do grupo pode exclui-lo");
+    throw new Error("Apenas o criador do grupo pode excluí-lo");
   }
 
   const { error: membersError } = await supabase
@@ -288,14 +399,14 @@ export async function deleteGroup(groupId: string): Promise<void> {
     .delete()
     .eq("group_id", groupId);
 
-  if (membersError) throw membersError;
+  if (membersError) throwGroupServiceError("deleteGroup", membersError);
 
   const { error: deleteError } = await supabase
     .from("groups")
     .delete()
     .eq("id", groupId);
 
-  if (deleteError) throw deleteError;
+  if (deleteError) throwGroupServiceError("deleteGroup", deleteError);
 }
 
 // getGroups | Lista grupos do usuário
@@ -309,7 +420,7 @@ export async function getGroups(): Promise<Group[]> {
     .select("groups(id, name, created_by, created_at)")
     .eq("user_id", userId);
 
-  if (error) throw error;
+  if (error) throwGroupServiceError("getGroups", error);
 
   return (data ?? []).flatMap((row) =>
     normalizeRelation(row.groups as SupabaseRelation<Group>)
@@ -329,7 +440,7 @@ export async function getGroupInfo(groupId: string): Promise<GroupInfo> {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (membershipError) throw membershipError;
+  if (membershipError) throwGroupServiceError("getGroupInfo", membershipError);
   if (!membership) throw new Error("Você não tem acesso a este grupo");
 
   const { data, error } = await supabase
@@ -357,7 +468,7 @@ export async function getGroupInfo(groupId: string): Promise<GroupInfo> {
     .eq("id", groupId)
     .single();
 
-  if (error) throw error;
+  if (error) throwGroupServiceError("getGroupInfo", error);
 
   return mapToGroupInfo(data as GroupInfoRaw);
 }
@@ -376,7 +487,7 @@ export async function createGroupInvite(
     .eq("id", groupId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) throwGroupServiceError("createGroupInvite", error);
   if (!group) throw new Error("Grupo não encontrado");
 
   return encodeInvitePayload(groupId, userId);

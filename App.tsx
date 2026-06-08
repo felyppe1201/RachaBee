@@ -18,6 +18,9 @@ import { useAuth } from "./src/hooks/useAuth";
 // Context
 import { UserProvider, useUser } from "./src/context/UserContext";
 
+// ErrorMessage
+import { ErrorMessageProvider } from "./src/components/interface/ErrorMessage";
+
 // AppContent | separado do App para poder consumir o UserProvider
 function AppContent() {
   const { session, loading } = useAuth();
@@ -51,7 +54,9 @@ function AppContent() {
 export default function App() {
   return (
     <UserProvider>
-      <AppContent />
+      <ErrorMessageProvider>
+        <AppContent />
+      </ErrorMessageProvider>
     </UserProvider>
   );
 }

@@ -42,3 +42,5 @@ yarn-error.*
 
 # MD de acompanhamento pessoal
 timeline.md
+
+*.pdf
