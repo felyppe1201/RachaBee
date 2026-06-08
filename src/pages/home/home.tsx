@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 import React, { useState, useRef } from "react";
+=======
+import React, { useState } from "react";
+>>>>>>> release
 
 // IMG's
 import Logo from "../../assets/logo.png";
 
 // React Native
+<<<<<<< HEAD
 import {
   View,
   Image,
@@ -14,22 +19,29 @@ import {
   Animated,
   Easing,
 } from "react-native";
+=======
+import { View, Image, Text } from "react-native";
+>>>>>>> release
 import Octagon from "../../components/interface/Octagon";
 
 // Context
 import { useUser } from "../../context/UserContext";
 
+<<<<<<< HEAD
 // authService
 import { signOut } from "../../lib/authService";
 
 // Popups
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
 
+=======
+>>>>>>> release
 // responsividade
 import {
   responsiveWidth,
   responsiveHeight,
 } from "react-native-responsive-dimensions";
+<<<<<<< HEAD
 
 import { moderateScale } from "react-native-size-matters";
 
@@ -73,11 +85,26 @@ export default function Home() {
       {/*Logo simbolo*/}
       <View
         className="items-center justify-center absolute top-6 left-0 z-50"
+=======
+
+export default function Home() {
+  const { profile, balance } = useUser();
+
+  return (
+    <View className="flex-1 flex flex-col items-center justify-start relative">
+      {/*Logo simbolo*/}
+      <View
+        className="items-center justify-center absolute top-3 left-0 z-50"
+>>>>>>> release
         style={{ width: responsiveWidth(40), height: responsiveWidth(40) }}
       >
         {/* wrapper absoluto que cobre toda a view; Octagon fica em fluxo normal dentro dele */}
         <View className="absolute w-full h-full items-center justify-center z-0">
+<<<<<<< HEAD
           <Octagon color="secondary" stroke="blackapp" strokeWidth={4} />
+=======
+          <Octagon color="secondary" stroke="black" strokeWidth={4} />
+>>>>>>> release
         </View>
         <Image
           source={Logo}
@@ -85,6 +112,18 @@ export default function Home() {
           className=" z-20"
           resizeMode="contain"
         />
+<<<<<<< HEAD
+=======
+      </View>
+      {/*Logo simbolo FIM*/}
+      <View
+        style={{ height: responsiveHeight(16) }}
+        className="w-full bg-secondary z-40 border-b-[12px] border-black flex flex-row items-center justify-center pt-6 px-10"
+      >
+        <Text className="text-black text-2xl font-bold">
+          Olá, {profile?.nome}!
+        </Text>
+>>>>>>> release
       </View>
       {/*Logo simbolo FIM*/}
       {/*Fita de Inicio*/}
