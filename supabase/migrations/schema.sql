@@ -79,6 +79,27 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- RPC: criar grupo + inserir criador como membro em uma transação
+create or replace function public.create_group(group_name text)
+returns public.groups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_group public.groups;
+begin
+  insert into public.groups (name, created_by)
+  values (group_name, auth.uid())
+  returning * into new_group;
+
+  insert into public.group_members (group_id, user_id)
+  values (new_group.id, auth.uid());
+
+  return new_group;
+end;
+$$;
+
 -- RLS
 alter table public.users enable row level security;
 alter table public.groups enable row level security;
@@ -98,36 +119,53 @@ create policy "users_update" on public.users
   with check (auth.uid() = id);
 
 -- POLICIES: groups
-create policy "groups_select" on public.groups
+create policy "groups_select_creator" on public.groups
+  for select using (created_by = (select auth.uid()));
+
+create policy "groups_select_member" on public.groups
   for select using (
-    exists (
-      select 1 from public.group_members
-      where group_members.group_id = groups.id
-      and group_members.user_id = auth.uid()
+    id in (
+      select group_id from public.group_members
+      where user_id = (select auth.uid())
     )
   );
 
 create policy "groups_insert" on public.groups
   for insert with check (auth.uid() = created_by);
 
+create policy "groups_delete_creator" on public.groups
+  for delete using (created_by = (select auth.uid()));
+
 -- POLICIES: group_members
 create policy "group_members_select" on public.group_members
   for select using (
-    exists (
-      select 1 from public.group_members gm
-      where gm.group_id = group_members.group_id
-      and gm.user_id = auth.uid()
+    group_id in (
+      select group_id from public.group_members
+      where user_id = (select auth.uid())
     )
   );
 
-create policy "group_members_insert" on public.group_members
+create policy "group_members_insert_creator" on public.group_members
   for insert with check (
-    exists (
-      select 1 from public.group_members gm
-      where gm.group_id = group_members.group_id
-      and gm.user_id = auth.uid()
+    user_id = (select auth.uid())
+    and exists (
+      select 1 from public.groups
+      where groups.id = group_members.group_id
+      and groups.created_by = (select auth.uid())
     )
   );
+
+create policy "group_members_insert_by_member" on public.group_members
+  for insert with check (
+    user_id = (select auth.uid())
+    and group_id in (
+      select group_id from public.group_members
+      where user_id = (select auth.uid())
+    )
+  );
+
+create policy "group_members_delete_self" on public.group_members
+  for delete using (user_id = (select auth.uid()));
 
 -- POLICIES: expenses
 create policy "expenses_select" on public.expenses
