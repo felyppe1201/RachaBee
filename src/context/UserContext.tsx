@@ -7,10 +7,11 @@ import { supabase } from "../lib/supabase";
 // Cache
 import { clearAllCaches, getCached, setCached } from "../lib/cacheService";
 
-// chave do cache do perfil do próprio usuário autenticado
+// Balance
+import { getBalance, invalidateBalanceCache } from "../lib/BalanceService";
+
 const CACHE_KEY_SELF = "@cache:user:self";
 
-// dados do perfil do usuário, espelhados da tabela users
 export type UserProfile = {
   id: string;
   nome: string;
@@ -19,7 +20,6 @@ export type UserProfile = {
   created_at: string;
 };
 
-// saldo calculado do usuário (não guardado no banco, apenas em memória)
 export type UserBalance = {
   devendo: number;
   areceber: number;
@@ -30,55 +30,63 @@ type UserContextType = {
   balance: UserBalance;
   loadUser: (userId: string) => Promise<void>;
   clearUser: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | null>(null);
 
-// UserProvider | provê os dados do usuário autenticado para toda a árvore de componentes
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  // perfil do usuário autenticado
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  // saldo calculado - placeholder até a lógica de cálculo ser implementada
   const [balance, setBalance] = useState<UserBalance>({
-    devendo: 200,
-    areceber: 200,
+    devendo: 0,
+    areceber: 0,
   });
 
-  // loadUser | carrega o perfil do cache ou do Supabase, e atualiza o cache
+  // loadUser | carrega perfil e balance (do cache ou do Supabase)
   const loadUser = useCallback(async (userId: string) => {
+    // perfil
     const cached = await getCached<UserProfile>(CACHE_KEY_SELF);
     if (cached) {
       setProfile(cached);
-      return;
+    } else {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, nome, email, avatar_url, created_at")
+        .eq("id", userId)
+        .single();
+
+      if (!error && data) {
+        setProfile(data as UserProfile);
+        await setCached(CACHE_KEY_SELF, data);
+      }
     }
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, nome, email, avatar_url, created_at")
-      .eq("id", userId)
-      .single();
-
-    if (!error && data) {
-      setProfile(data as UserProfile);
-      await setCached(CACHE_KEY_SELF, data);
-    }
+    // balance (cache ou cálculo inicial)
+    const bal = await getBalance();
+    setBalance(bal);
   }, []);
 
-  // clearUser | reseta o estado em memória e apaga todos os caches da aplicação
+  // refreshBalance | força recálculo do balance e atualiza o contexto
+  const refreshBalance = useCallback(async () => {
+    await invalidateBalanceCache();
+    const bal = await getBalance();
+    setBalance(bal);
+  }, []);
+
+  // clearUser | reseta tudo e limpa caches
   const clearUser = useCallback(async () => {
     setProfile(null);
-    setBalance({ devendo: 200, areceber: 200 });
+    setBalance({ devendo: 0, areceber: 0 });
     await clearAllCaches();
   }, []);
 
   return (
-    <UserContext.Provider value={{ profile, balance, loadUser, clearUser }}>
+    <UserContext.Provider value={{ profile, balance, loadUser, clearUser, refreshBalance }}>
       {children}
     </UserContext.Provider>
   );
 }
 
-// useUser | acessa os dados do usuário autenticado de qualquer componente
 export function useUser() {
   const ctx = useContext(UserContext);
   if (!ctx) throw new Error("useUser deve ser usado dentro de UserProvider");
