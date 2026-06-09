@@ -146,7 +146,7 @@ export default function CreateGroupForm({
       onRequestClose={handleClose}
     >
       <Pressable
-        className="flex-1 items-center justify-center bg-black/40"
+        className="flex-1 items-center justify-center bg-black/40 z-[100]"
         onPress={handleClose}
       >
         <Pressable
@@ -155,7 +155,7 @@ export default function CreateGroupForm({
             minHeight: responsiveHeight(34),
             maxHeight: responsiveHeight(40),
           }}
-          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start"
+          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
           <Pressable

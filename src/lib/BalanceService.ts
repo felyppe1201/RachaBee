@@ -6,7 +6,7 @@ const CACHE_KEY_BALANCE = "@cache:balance:self";
 
 // calculateBalance | chama a RPC e retorna o balance calculado
 export async function calculateBalance(): Promise<UserBalance> {
-  const { data, error } = await supabase.rpc("ActualGlobalBalance");
+  const { data, error } = await supabase.rpc("actualglobalbalance");
 
   if (error || !data) {
     console.log("Erro ao calcular balance:", error?.message);

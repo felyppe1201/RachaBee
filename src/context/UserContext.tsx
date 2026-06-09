@@ -46,37 +46,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const loadUser = useCallback(async (userId: string) => {
     // perfil
     const cached = await getCached<UserProfile>(CACHE_KEY_SELF);
-    if (cached) {
+    if (cached?.id === userId) {
       setProfile(cached);
     } else {
       const { data, error } = await supabase
         .from("users")
-        .select("id, nome, email, avatar_url, created_at")
+        .select("id, name, email, avatar_url, created_at")
         .eq("id", userId)
         .single();
 
       if (!error && data) {
-        setProfile(data as UserProfile);
+        setProfile(data);
         await setCached(CACHE_KEY_SELF, data);
       }
     }
 
-<<<<<<< HEAD
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, name, email, avatar_url, created_at")
-      .eq("id", userId)
-      .single();
-
-    if (!error && data) {
-      setProfile(data as UserProfile);
-      await setCached(CACHE_KEY_SELF, data);
-    }
-=======
     // balance (cache ou cálculo inicial)
     const bal = await getBalance();
     setBalance(bal);
->>>>>>> release
   }, []);
 
   // refreshBalance | força recálculo do balance e atualiza o contexto
@@ -94,7 +81,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ profile, balance, loadUser, clearUser, refreshBalance }}>
+    <UserContext.Provider
+      value={{ profile, balance, loadUser, clearUser, refreshBalance }}
+    >
       {children}
     </UserContext.Provider>
   );

@@ -40,7 +40,7 @@ Requer ErrorMessageProvider montado na raiz do app.
 */
 export function showErrorMessage(
   message: string,
-  type: ErrorMessageType = "commonError"
+  type: ErrorMessageType = "commonError",
 ): void {
   showErrorCallback?.({ message, type });
 }
@@ -56,7 +56,7 @@ function ErrorMessageBanner({ message, type }: ErrorMessageBannerProps) {
   return (
     <Pressable
       style={styles.banner}
-      className="bg-hlpink border-[4px] border-black"
+      className="bg-hlpink border-[4px] border-black z-[10000]"
       onPress={(event) => event.stopPropagation()}
     >
       <View className="p-2 items-center justify-center shrink-0">
