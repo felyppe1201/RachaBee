@@ -2,6 +2,8 @@ import React, { useState, useRef } from "react";
 
 // IMG's
 import Logo from "../../assets/logo.png";
+import PaiaSticker from "../../assets/stickers/paia.webp";
+import PoggersSticker from "../../assets/stickers/poggers.webp";
 
 // React Native
 import {
@@ -185,6 +187,19 @@ export default function Home() {
                           currency: "BRL",
                         })}
                       </Text>
+                      <View
+                        style={{
+                          height: responsiveHeight(5),
+                          width: responsiveHeight(5),
+                        }}
+                        className="absolute right-2.5 bottom-2 rotate-12"
+                      >
+                        <Image
+                          source={PaiaSticker}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="contain"
+                        />
+                      </View>
                     </View>
                     <View className="h-[2px] flex w-full bg-blackapp/20" />
                     <View className="flex h-[50%] w-full flex-col items-start gap-1 py-3 pt-4">
@@ -197,6 +212,19 @@ export default function Home() {
                           currency: "BRL",
                         })}
                       </Text>
+                      <View
+                        style={{
+                          height: responsiveHeight(6),
+                          width: responsiveHeight(6),
+                        }}
+                        className="absolute right-4 bottom-2 -rotate-6"
+                      >
+                        <Image
+                          source={PoggersSticker}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="contain"
+                        />
+                      </View>
                     </View>
                   </View>
                   {/* Card do saldo FIM */}

@@ -8,6 +8,7 @@ import { ActivityIndicator, Platform, View } from "react-native";
 
 // Expo
 import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
 
 // Páginas
 import Login from "./src/pages/login";
@@ -70,10 +71,13 @@ export default function App() {
   useAndroidNavigationBar();
 
   return (
-    <UserProvider>
-      <ErrorMessageProvider>
-        <AppContent />
-      </ErrorMessageProvider>
-    </UserProvider>
+    <>
+      <StatusBar style="dark" />
+      <UserProvider>
+        <ErrorMessageProvider>
+          <AppContent />
+        </ErrorMessageProvider>
+      </UserProvider>
+    </>
   );
 }

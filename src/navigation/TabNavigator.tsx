@@ -26,7 +26,7 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import Home from "../pages/home/home";
 import Grupos from "../pages/grupos/grupos";
 import Atividade from "../pages/atividade/atividade";
-import Perfil from "../pages/perfil/perfil";
+import PerfilStack from "../pages/perfil/PerfilStack";
 
 // Temas
 import { themas } from "../global/themes";
@@ -36,12 +36,21 @@ const CARD_OVERLAP = 18;
 const CARD_LIFT = 16;
 const CARD_HEIGHT = 72;
 const ICON_SIZE = 26;
+const IDLE_Y_OFFSETS = [0, -6, 4, -3] as const;
+
+function getMaxIdleUp(offsets: readonly number[]) {
+  return offsets.reduce(
+    (max, offset) => Math.max(max, offset < 0 ? -offset : 0),
+    0,
+  );
+}
 
 type TabCardProps = {
   index: number;
   isFocused: boolean;
   cardWidth: number;
   cardHeight: number;
+  idleYOffset: number;
   label: string;
   icon: ReactNode;
   backgroundColor: string;
@@ -54,6 +63,7 @@ function TabCard({
   isFocused,
   cardWidth,
   cardHeight,
+  idleYOffset,
   label,
   icon,
   backgroundColor,
@@ -71,7 +81,7 @@ function TabCard({
     }).start();
   }, [isFocused, liftAnim]);
 
-  const translateY = liftAnim.interpolate({
+  const focusTranslateY = liftAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -CARD_LIFT],
   });
@@ -90,22 +100,33 @@ function TabCard({
         zIndex: index + 1,
       }}
     >
-      <Animated.View
-        className="flex-1 items-center justify-start rounded-t-lg pt-3 px-2"
+      <View
         style={{
-          backgroundColor,
-          transform: [{ translateY }],
+          height: cardHeight,
+          transform: [{ translateY: idleYOffset }],
         }}
       >
-        {icon}
-        <Text
-          className="text-[13px] font-extrabold mt-1 text-center px-1"
-          style={{ color: themas.colors.secondary }}
-          numberOfLines={1}
+        <Animated.View
+          style={{
+            height: cardHeight,
+            alignItems: "center",
+            justifyContent: "flex-start",
+            paddingTop: 12,
+            paddingHorizontal: 8,
+            backgroundColor,
+            transform: [{ translateY: focusTranslateY }],
+          }}
         >
-          {label}
-        </Text>
-      </Animated.View>
+          {icon}
+          <Text
+            className="text-[13px] font-extrabold mt-1 text-center px-1"
+            style={{ color: themas.colors.secondary }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </Animated.View>
+      </View>
     </Pressable>
   );
 }
@@ -114,10 +135,11 @@ function CardTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const tabCount = state.routes.length;
-  const cardWidth = (width + CARD_OVERLAP * (tabCount - 1)) / tabCount;
-  const navAreaHeight = Math.max(insets.bottom, 12);
+  const cardWidth =
+    tabCount > 0 ? (width + CARD_OVERLAP * (tabCount - 1)) / tabCount : width;
+  const navAreaHeight = Math.max(insets.bottom ?? 0, 12);
   const cardHeight = CARD_HEIGHT + navAreaHeight;
-  const barHeight = cardHeight + CARD_LIFT;
+  const barHeight = cardHeight + CARD_LIFT + getMaxIdleUp(IDLE_Y_OFFSETS);
 
   return (
     <View
@@ -169,6 +191,7 @@ function CardTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               isFocused={isFocused}
               cardWidth={cardWidth}
               cardHeight={cardHeight}
+              idleYOffset={IDLE_Y_OFFSETS[index % IDLE_Y_OFFSETS.length]}
               label={label}
               icon={icon}
               backgroundColor={backgroundColor}
@@ -241,7 +264,7 @@ export default function TabNavigator() {
         />
         <Tab.Screen
           name="Perfil"
-          component={Perfil}
+          component={PerfilStack}
           options={{
             tabBarLabel: "Perfil",
             tabBarIcon: ({ color, size }) => (
