@@ -289,7 +289,7 @@ export default function Home() {
           {/* Zona Supeior FIM */}
           {/* Zona inferior */}
           <View
-            style={{ height: responsiveHeight(30) }}
+            style={{ height: responsiveHeight(0) }}
             className="w-full flex flex-row border-t-[10px] border-blackapp"
           ></View>
           {/* Zona inferior FIM */}

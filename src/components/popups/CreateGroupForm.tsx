@@ -192,7 +192,7 @@ export default function CreateGroupForm({
               className="border-[3px] border-blackapp p-2 text-blackapp text-base font-medium w-full"
             />
             <Pressable
-              className={`bg-hlblue w-[100%] py-2 pb-3 items-center flex-row justify-center gap-2 ${loading ? "opacity-70" : ""}`}
+              className={`bg-hlblue w-[100%] py-2 pr-2 pb-4 items-center flex-row justify-center gap-2 ${loading ? "opacity-70" : ""}`}
               onPress={handleCreate}
               disabled={loading}
             >

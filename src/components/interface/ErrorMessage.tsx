@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   banner: {
     position: "absolute",
-    bottom: responsiveHeight(3),
+    bottom: responsiveHeight(18),
     left: responsiveWidth(4),
     width: responsiveWidth(92),
     height: responsiveHeight(12),
