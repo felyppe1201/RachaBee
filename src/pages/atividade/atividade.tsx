@@ -76,7 +76,7 @@ function ActivityListItemRow({ item, onPress }: ActivityListItemProps) {
       className="w-full flex-row items-center gap-3 px-4 py-3 border-b-[3px] border-blackapp/20 bg-white"
     >
       <View
-        className={`w-10 h-10 rounded-full items-center justify-center ${
+        className={`w-10 h-10 rounded-full items-center justify-center shrink-0 ${
           isExpense ? "bg-hlpink" : "bg-hlblue"
         }`}
       >
@@ -86,11 +86,19 @@ function ActivityListItemRow({ item, onPress }: ActivityListItemProps) {
       </View>
 
       <View className="flex-1">
-        <Text className="text-hlblue font-bold text-sm mt-1">
+        <Text
+          className="text-blackapp font-bold text-sm"
+          numberOfLines={1}
+        >
+          {item.description}
+        </Text>
+        <Text
+          className={`font-bold text-sm mt-0.5 ${isExpense ? "text-hlpink" : "text-hlblue"}`}
+        >
           {formatCurrency(item.amount)}
         </Text>
         <Text className="text-blackapp/60 text-xs mt-0.5">
-          {formatActivityListDate(item.created_at)}
+          {isExpense ? "Despesa" : "Pagamento"} · {formatActivityListDate(item.created_at)}
         </Text>
       </View>
     </Pressable>

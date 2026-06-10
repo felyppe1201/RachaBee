@@ -50,6 +50,17 @@ export type RpcActionResult = {
   message: string;
 };
 
+export type ExpensePayment = {
+  id: string;
+  paid_by: string;
+  amount: number;
+  description: string;
+  transfer_receipt_url: string | null;
+  created_at: string;
+  payer_name: string;
+  payer_avatar_url: string | null;
+};
+
 export type GroupWithCreator = Group & {
   creatorName: string;
 };
@@ -159,7 +170,8 @@ type GroupServiceContext =
   | "deleteGroup"
   | "getGroups"
   | "getGroupInfo"
-  | "createGroupInvite";
+  | "createGroupInvite"
+  | "getExpensePayments";
 
 const KNOWN_USER_MESSAGES = [
   "usuário não autenticado",
@@ -469,15 +481,25 @@ export async function createGroupInvite(
   return encodeInvitePayload(groupId, userId);
 }
 
+// getPaymentsByExpense | Retorna todos os pagamentos de uma despesa via RPC
+export async function getPaymentsByExpense(
+  expenseId: string,
+): Promise<ExpensePayment[]> {
+  const { data, error } = await supabase.rpc("GetPaymentsByExpenseUUID", {
+    expense_id: expenseId,
+  });
+
+  if (error) throwGroupServiceError("getExpensePayments", error);
+
+  return (data ?? []) as ExpensePayment[];
+}
+
 // buildInviteShareMessage | Monta texto do convite para compartilhamento nativo
 export function buildInviteShareMessage(
   inviteCode: string,
   groupName?: string,
 ): string {
-  const groupLabel = groupName ? `"${groupName}"` : "no RachaBee!!";
+  const groupLabel = groupName ? `"${groupName}"` : "no RachaBee";
 
-  return `Entre no grupo ${groupLabel} no RachaBee!
-
-Código do convite:
-${inviteCode}`;
+  return `Entre no grupo ${groupLabel} no RachaBee!\n\nCódigo do convite:\n${inviteCode}`;
 }

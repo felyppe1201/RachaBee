@@ -43,6 +43,7 @@ export type CreatePaymentInput = {
   groupId: string;
   description: string;
   transferReceiptUrl?: string | null;
+  transferReceiptUri?: string | null;
 };
 
 // Área Cache | Chaves de split sincronizadas após criação
@@ -60,7 +61,8 @@ type ExpenseServiceContext =
   | "createExpense"
   | "createPayment"
   | "uploadExpenseReceipt"
-  | "uploadTransferReceipt";
+  | "uploadTransferReceipt"
+  | "deleteExpense";
 
 const KNOWN_USER_MESSAGES = [
   "usuário não autenticado",
@@ -362,12 +364,23 @@ export async function createExpense(
 export async function createPayment(
   input: CreatePaymentInput
 ): Promise<CreatePaymentResult> {
-  const { expenseId, groupId, description, transferReceiptUrl } = input;
+  const { expenseId, groupId, description, transferReceiptUrl, transferReceiptUri } = input;
+
+  let resolvedUrl: string | undefined = transferReceiptUrl ?? undefined;
+
+  if (!resolvedUrl && transferReceiptUri) {
+    const tempId = generatePendingReceiptId();
+    const uploaded = await uploadTransferReceipt(tempId, transferReceiptUri);
+    if (!uploaded) {
+      throw new Error("Não foi possível enviar o comprovante. Tente novamente.");
+    }
+    resolvedUrl = uploaded;
+  }
 
   const { data, error } = await supabase.rpc("CreatePayment", {
     expense_id: expenseId,
     description,
-    transfer_receipt_url: transferReceiptUrl ?? undefined,
+    transfer_receipt_url: resolvedUrl ?? null,
   });
 
   assertRpcSuccess("createPayment", data, error);
@@ -378,4 +391,17 @@ export async function createPayment(
   await invalidateExpenseRelatedCaches(groupId, expenseId);
 
   return data as CreatePaymentResult;
+}
+
+// deleteExpense | Encerra despesa paga pelo criador via RPC
+export async function deleteExpense(
+  expenseId: string,
+  groupId: string
+): Promise<void> {
+  const { data, error } = await supabase.rpc("DeleteExpense", {
+    expense_id: expenseId,
+  });
+
+  assertRpcSuccess("deleteExpense", data, error);
+  await invalidateExpenseRelatedCaches(groupId, expenseId);
 }
