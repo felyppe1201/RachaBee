@@ -234,7 +234,7 @@ function ExpenseListItem({ expense, payer, onPress }: ExpenseListItemProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="w-full flex-row items-center gap-3 px-4 py-3 border-b-[3px] border-blackapp/20 bg-white"
+      className="w-full flex-row items-center gap-3 px-4 py-5 pb-10 border-t-[2px] border-blackapp/20 bg-white"
     >
       {payer.avatar_url ? (
         <Image
@@ -286,44 +286,47 @@ export default function DetalheGrupo({ navigation, route }: Props) {
   const isCreator = groupInfo?.group.created_by === profile?.id;
 
   // fetchGroupInfo | Exibe cache imediato e sincroniza via calculateGroupInfo
-  const fetchGroupInfo = useCallback(async (mode: LoadMode = "initial") => {
-    if (mode === "pull") {
-      setRefreshing(true);
-    }
-
-    const cached = await peekGroupInfo(groupId);
-
-    if (mode === "initial") {
-      if (cached) {
-        setGroupInfo(cached);
-        setLoading(false);
-      } else {
-        setLoading(true);
-      }
-    }
-
-    if (mode !== "pull") {
-      setError(null);
-    }
-
-    try {
-      const fresh = await calculateGroupInfo(groupId);
-      setGroupInfo((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
-    } catch (err) {
-      if (!cached) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Não foi possível carregar as despesas.",
-        );
-      }
-    } finally {
-      setLoading(false);
+  const fetchGroupInfo = useCallback(
+    async (mode: LoadMode = "initial") => {
       if (mode === "pull") {
-        setRefreshing(false);
+        setRefreshing(true);
       }
-    }
-  }, [groupId]);
+
+      const cached = await peekGroupInfo(groupId);
+
+      if (mode === "initial") {
+        if (cached) {
+          setGroupInfo(cached);
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
+      }
+
+      if (mode !== "pull") {
+        setError(null);
+      }
+
+      try {
+        const fresh = await calculateGroupInfo(groupId);
+        setGroupInfo((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
+      } catch (err) {
+        if (!cached) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Não foi possível carregar as despesas.",
+          );
+        }
+      } finally {
+        setLoading(false);
+        if (mode === "pull") {
+          setRefreshing(false);
+        }
+      }
+    },
+    [groupId],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -482,10 +485,7 @@ export default function DetalheGrupo({ navigation, route }: Props) {
 
             {loading && !groupInfo ? (
               <View className="flex-1 items-center justify-center">
-                <ActivityIndicator
-                  size="large"
-                  color={themas.colors.primary}
-                />
+                <ActivityIndicator size="large" color={themas.colors.primary} />
               </View>
             ) : error && !groupInfo ? (
               <ScrollView

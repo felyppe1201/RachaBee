@@ -24,12 +24,6 @@ export type CreateExpenseResult = {
   receiptUploadFailed?: boolean;
 };
 
-export type CreatePaymentResult = {
-  success: boolean;
-  payment_id: string;
-  amount: number;
-};
-
 export type CreateExpenseInput = {
   groupId: string;
   description: string;
@@ -43,6 +37,14 @@ export type CreatePaymentInput = {
   groupId: string;
   description: string;
   transferReceiptUrl?: string | null;
+  transferReceiptUri?: string | null;
+};
+
+export type CreatePaymentResult = {
+  success: boolean;
+  payment_id: string;
+  amount: number;
+  receiptUploadFailed?: boolean;
 };
 
 // Área Cache | Chaves de split sincronizadas após criação
@@ -358,16 +360,49 @@ export async function createExpense(
 
 // Área Pagamentos | CreatePayment
 
+// resolveTransferReceiptUrl | Envia comprovante local e retorna URL pública
+async function resolveTransferReceiptUrl(
+  transferReceiptUrl?: string | null,
+  transferReceiptUri?: string | null
+): Promise<{ transferReceiptUrl?: string; receiptUploadFailed: boolean }> {
+  if (transferReceiptUrl) {
+    return { transferReceiptUrl, receiptUploadFailed: false };
+  }
+
+  if (!transferReceiptUri) {
+    return { receiptUploadFailed: false };
+  }
+
+  const uploadedUrl = await uploadTransferReceipt(
+    generatePendingReceiptId(),
+    transferReceiptUri
+  );
+
+  if (!uploadedUrl) {
+    return { receiptUploadFailed: true };
+  }
+
+  return { transferReceiptUrl: uploadedUrl, receiptUploadFailed: false };
+}
+
 // createPayment | Registra pagamento de uma despesa via RPC
 export async function createPayment(
   input: CreatePaymentInput
 ): Promise<CreatePaymentResult> {
-  const { expenseId, groupId, description, transferReceiptUrl } = input;
+  const {
+    expenseId,
+    groupId,
+    description,
+    transferReceiptUrl,
+    transferReceiptUri,
+  } = input;
+  const { transferReceiptUrl: resolvedReceiptUrl, receiptUploadFailed } =
+    await resolveTransferReceiptUrl(transferReceiptUrl, transferReceiptUri);
 
   const { data, error } = await supabase.rpc("CreatePayment", {
     expense_id: expenseId,
     description,
-    transfer_receipt_url: transferReceiptUrl ?? undefined,
+    transfer_receipt_url: resolvedReceiptUrl,
   });
 
   assertRpcSuccess("createPayment", data, error);
@@ -377,5 +412,8 @@ export async function createPayment(
 
   await invalidateExpenseRelatedCaches(groupId, expenseId);
 
-  return data as CreatePaymentResult;
+  return {
+    ...(data as CreatePaymentResult),
+    receiptUploadFailed: receiptUploadFailed || undefined,
+  };
 }

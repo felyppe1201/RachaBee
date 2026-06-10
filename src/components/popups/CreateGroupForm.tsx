@@ -2,7 +2,7 @@
 import { X } from "lucide-react-native";
 
 // React
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // React Native
 import {
@@ -13,7 +13,6 @@ import {
   TextInput,
   Animated,
   Easing,
-  ActivityIndicator,
 } from "react-native";
 
 // GroupService
@@ -25,7 +24,7 @@ import { showErrorMessage } from "../interface/ErrorMessage";
 // Temas
 import { themas } from "../../global/themes";
 
-// responsividade
+// Responsividade
 import {
   responsiveWidth,
   responsiveHeight,
@@ -40,6 +39,7 @@ type CreateGroupFormState = {
   groupName: string;
 };
 
+// getErrorMessage | Obtém mensagem de erro legível
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -48,6 +48,7 @@ function getErrorMessage(error: unknown): string {
   return "Não foi possível criar o grupo.";
 }
 
+// CreateGroupForm | Modal para criar um novo grupo
 export default function CreateGroupForm({
   visible,
   onClose,
@@ -56,8 +57,6 @@ export default function CreateGroupForm({
     new Promise((resolve) => setTimeout(resolve, ms));
 
   const [showXFlag, setXFlag] = useState(false);
-  const [loading, setLoading] = useState(false);
-
   const pressAnim = useRef(new Animated.Value(0)).current;
 
   const [state, setState] = useState<CreateGroupFormState>({
@@ -72,7 +71,6 @@ export default function CreateGroupForm({
   const resetForm = () => {
     resetPressAnim();
     setState({ groupName: "" });
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -81,7 +79,7 @@ export default function CreateGroupForm({
   }, [visible]);
 
   const handleClose = async () => {
-    if (showXFlag || loading) return;
+    if (showXFlag) return;
     setXFlag(true);
     await sleep(200);
     resetForm();
@@ -93,26 +91,19 @@ export default function CreateGroupForm({
     setState((prev) => ({ ...prev, groupName: text }));
   };
 
-  const handleCreate = async () => {
-    if (loading) return;
-
+  const handleCreate = () => {
     const trimmedName = state.groupName.trim();
     if (!trimmedName) {
       showErrorMessage("Informe um nome para o grupo.", "commonError");
       return;
     }
 
-    setLoading(true);
+    resetForm();
+    onClose();
 
-    try {
-      await createNewGroup(trimmedName);
-      resetForm();
-      onClose();
-    } catch (err) {
+    createNewGroup(trimmedName).catch((err) => {
       showErrorMessage(getErrorMessage(err), "commonError");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const onPressIn = () => {
@@ -152,10 +143,10 @@ export default function CreateGroupForm({
         <Pressable
           style={{
             width: responsiveWidth(90),
-            minHeight: responsiveHeight(34),
-            maxHeight: responsiveHeight(40),
+            paddingTop: responsiveHeight(1),
+            gap: responsiveHeight(2),
           }}
-          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start z-[101]"
+          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
           <Pressable
@@ -163,23 +154,23 @@ export default function CreateGroupForm({
             className="absolute top-4 right-4 z-50"
             onPressIn={onPressIn}
             onPressOut={onPressOut}
-            disabled={loading}
           >
-            <Animated.View
-              style={{
-                backgroundColor: bgColor,
-              }}
-              className="p-2"
-            >
+            <Animated.View style={{ backgroundColor: bgColor }} className="p-2">
               <X size={32} color="#fff" />
             </Animated.View>
           </Pressable>
 
-          <Text className="text-4xl text-blackapp self-start top-2 font-black w-full z-30">
+          <Text
+            style={{ paddingRight: responsiveWidth(14) }}
+            className="text-4xl text-blackapp self-start font-black w-full z-30"
+          >
             Criar Grupo
           </Text>
 
-          <View className="flex flex-col items-center justify-center gap-4 top-8 w-full z-30">
+          <View
+            style={{ gap: responsiveHeight(2) }}
+            className="flex flex-col items-stretch w-full z-30"
+          >
             <Text className="text-sm text-blprimary self-start font-semibold">
               Crie um grupo para controlar a divisão de despesas com seus
               amigos!
@@ -188,19 +179,13 @@ export default function CreateGroupForm({
               placeholder="Nome de grupo bacana"
               value={state.groupName}
               onChangeText={handleGroupNameChange}
-              editable={!loading}
               className="border-[3px] border-blackapp p-2 text-blackapp text-base font-medium w-full"
             />
             <Pressable
-              className={`bg-hlblue w-[100%] py-2 pr-2 pb-4 items-center flex-row justify-center gap-2 ${loading ? "opacity-70" : ""}`}
+              className="bg-hlblue w-full py-3 items-center justify-center self-stretch"
               onPress={handleCreate}
-              disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-xl text-white font-bold">CRIAR</Text>
-              )}
+              <Text className="text-xl text-white font-bold">CRIAR</Text>
             </Pressable>
           </View>
         </Pressable>

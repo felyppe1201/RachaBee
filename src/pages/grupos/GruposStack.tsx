@@ -10,7 +10,6 @@ import DetalheGrupo from "./sons/DetalheGrupo";
 import DetalheExpense from "./sons/DetalheExpense";
 import MembrosGrupo from "./sons/MembrosGrupo";
 import ConvidarGrupo from "./sons/ConvidarGrupo";
-import EntrarGrupo from "./sons/EntrarGrupo";
 import type { GroupMemberInfo } from "../../lib/GroupService";
 
 export type GruposStackParamList = {
@@ -43,7 +42,6 @@ export default function GruposStack() {
       <Stack.Screen name="DetalheExpense" component={DetalheExpense} />
       <Stack.Screen name="MembrosGrupo" component={MembrosGrupo} />
       <Stack.Screen name="ConvidarGrupo" component={ConvidarGrupo} />
-      <Stack.Screen name="EntrarGrupo" component={EntrarGrupo} />
     </Stack.Navigator>
   );
 }

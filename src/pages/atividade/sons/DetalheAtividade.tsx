@@ -45,6 +45,9 @@ import {
   type ActivityFeed,
 } from "../../../lib/ActivityService";
 
+// GroupService
+import { peekGroupsList } from "../../../lib/GroupService";
+
 type Props = NativeStackScreenProps<AtividadeStackParamList, "DetalheAtividade">;
 
 type LoadMode = "initial" | "silent" | "pull";
@@ -182,6 +185,7 @@ function ReceiptThumbnail({ receiptUrl, onPress }: ReceiptThumbnailProps) {
 export default function DetalheAtividade({ navigation, route }: Props) {
   const { activityId, activityType } = route.params;
   const [activityFeed, setActivityFeed] = useState<ActivityFeed | null>(null);
+  const [groupName, setGroupName] = useState("Grupo");
   const [loading, setLoading] = useState(true);
   const [showFullscreenReceipt, setShowFullscreenReceipt] = useState(false);
   const hasVisited = useRef(false);
@@ -199,8 +203,19 @@ export default function DetalheAtividade({ navigation, route }: Props) {
   const receiptUrl =
     expense?.receipt_url ?? payment?.transfer_receipt_url ?? null;
 
-  const headerTitle =
-    expense?.description ?? payment?.description ?? "Atividade";
+  const headerTitle = expense ? "Despesa" : payment ? "Pagamento" : "Atividade";
+
+  // resolveGroupName | Obtém nome do grupo pelo id
+  const resolveGroupName = useCallback(async (groupId: string | undefined) => {
+    if (!groupId) {
+      setGroupName("Grupo");
+      return;
+    }
+
+    const groups = await peekGroupsList();
+    const match = groups?.find((group) => group.id === groupId);
+    setGroupName(match?.name ?? "Grupo");
+  }, []);
 
   // fetchActivityFeed | Exibe cache imediato e sincroniza via calculateActivityFeed
   const fetchActivityFeed = useCallback(
@@ -210,6 +225,11 @@ export default function DetalheAtividade({ navigation, route }: Props) {
       if (mode === "initial") {
         if (cached) {
           setActivityFeed(cached);
+          const cachedItem =
+            activityType === "expense"
+              ? resolveActivityExpense(cached, activityId)
+              : resolveActivityPayment(cached, activityId);
+          await resolveGroupName(cachedItem?.group_id);
           setLoading(false);
         } else {
           setLoading(true);
@@ -219,11 +239,16 @@ export default function DetalheAtividade({ navigation, route }: Props) {
       try {
         const fresh = await calculateActivityFeed();
         setActivityFeed((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
+        const freshItem =
+          activityType === "expense"
+            ? resolveActivityExpense(fresh, activityId)
+            : resolveActivityPayment(fresh, activityId);
+        await resolveGroupName(freshItem?.group_id);
       } finally {
         setLoading(false);
       }
     },
-    []
+    [activityId, activityType, resolveGroupName]
   );
 
   useFocusEffect(
@@ -288,33 +313,26 @@ export default function DetalheAtividade({ navigation, route }: Props) {
             ) : expense ? (
               <>
                 <ActivityDetailField
-                  label="Tipo"
-                  value="Despesa"
-                />
-                <ActivityDetailField
                   label="Valor"
                   value={formatCurrency(expense.amount)}
                 />
+                <ActivityDetailField
+                  label="Data"
+                  value={formatActivityDate(expense.created_at)}
+                />
+                <ActivityDetailField label="Grupo" value={groupName} />
                 <ActivityDetailField
                   label="Descrição"
                   value={expense.description}
                 />
                 <ActivityDetailField
-                  label="Data de criação"
-                  value={formatActivityDate(expense.created_at)}
-                />
-                <ActivityDetailField
-                  label="Valor por participante"
-                  value={formatCurrency(expense.val_por_participante)}
-                />
-                <ActivityDetailField
                   label="Pagamentos"
-                  value={`Pagos: ${expense.payments_feitos} · Faltam: ${expense.payments_faltantes}`}
+                  value={`Feitos: ${expense.payments_feitos} · Faltantes: ${expense.payments_faltantes}`}
                 />
                 {expense.receipt_url ? (
                   <View className="w-full gap-1">
                     <Text className="text-sm text-blackapp font-bold">
-                      Comprovante
+                      Imagem
                     </Text>
                     <ReceiptThumbnail
                       receiptUrl={expense.receipt_url}
@@ -325,23 +343,23 @@ export default function DetalheAtividade({ navigation, route }: Props) {
               </>
             ) : payment ? (
               <>
-                <ActivityDetailField label="Tipo" value="Pagamento" />
                 <ActivityDetailField
                   label="Valor"
                   value={formatCurrency(payment.amount)}
                 />
                 <ActivityDetailField
+                  label="Data"
+                  value={formatActivityDate(payment.created_at)}
+                />
+                <ActivityDetailField label="Grupo" value={groupName} />
+                <ActivityDetailField
                   label="Descrição"
                   value={payment.description}
-                />
-                <ActivityDetailField
-                  label="Data de criação"
-                  value={formatActivityDate(payment.created_at)}
                 />
                 {payment.transfer_receipt_url ? (
                   <View className="w-full gap-1">
                     <Text className="text-sm text-blackapp font-bold">
-                      Comprovante da transferência
+                      Imagem
                     </Text>
                     <ReceiptThumbnail
                       receiptUrl={payment.transfer_receipt_url}

@@ -21,7 +21,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 
 // ExpenseService
-import { createExpense } from "../../lib/ExpenseService";
+import { createPayment } from "../../lib/ExpenseService";
 
 // ErrorMessage
 import { showErrorMessage } from "../interface/ErrorMessage";
@@ -37,35 +37,18 @@ import {
 
 const DESCRIPTION_MAX_LENGTH = 250;
 
-type AddExpenseFormProps = {
+type CreatePaymentFormProps = {
   visible: boolean;
   onClose: () => void;
   groupId: string;
+  expenseId: string;
   onSuccess?: () => void;
 };
 
-type AddExpenseFormState = {
-  amount: string;
+type CreatePaymentFormState = {
   description: string;
   receiptUri: string | null;
 };
-
-// formatCurrencyInput | Aplica máscara BRL enquanto o usuário digita
-function formatCurrencyInput(rawDigits: string): string {
-  const cents = parseInt(rawDigits.replace(/\D/g, "") || "0", 10);
-  const value = cents / 100;
-
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
-// parseCurrencyInput | Converte valor mascarado para número
-function parseCurrencyInput(formatted: string): number {
-  const cents = parseInt(formatted.replace(/\D/g, "") || "0", 10);
-  return cents / 100;
-}
 
 // getErrorMessage | Obtém mensagem de erro legível
 function getErrorMessage(error: unknown): string {
@@ -73,24 +56,24 @@ function getErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "message" in error) {
     return String((error as { message: unknown }).message);
   }
-  return "Não foi possível adicionar a despesa.";
+  return "Não foi possível registrar o pagamento.";
 }
 
-// AddExpenseForm | Modal para adicionar nova despesa ao grupo
-export default function AddExpenseForm({
+// CreatePaymentForm | Modal para registrar pagamento de uma despesa
+export default function CreatePaymentForm({
   visible,
   onClose,
   groupId,
+  expenseId,
   onSuccess,
-}: AddExpenseFormProps) {
+}: CreatePaymentFormProps) {
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
   const [showXFlag, setXFlag] = useState(false);
   const pressAnim = useRef(new Animated.Value(0)).current;
 
-  const [state, setState] = useState<AddExpenseFormState>({
-    amount: formatCurrencyInput("0"),
+  const [state, setState] = useState<CreatePaymentFormState>({
     description: "",
     receiptUri: null,
   });
@@ -102,11 +85,7 @@ export default function AddExpenseForm({
 
   const resetForm = () => {
     resetPressAnim();
-    setState({
-      amount: formatCurrencyInput("0"),
-      description: "",
-      receiptUri: null,
-    });
+    setState({ description: "", receiptUri: null });
   };
 
   useEffect(() => {
@@ -121,13 +100,6 @@ export default function AddExpenseForm({
     resetForm();
     onClose();
     setXFlag(false);
-  };
-
-  const handleAmountChange = (text: string) => {
-    setState((prev) => ({
-      ...prev,
-      amount: formatCurrencyInput(text),
-    }));
   };
 
   const handleDescriptionChange = (text: string) => {
@@ -155,38 +127,29 @@ export default function AddExpenseForm({
   };
 
   const handleSubmit = () => {
-    const amount = parseCurrencyInput(state.amount);
     const description = state.description.trim();
     const receiptUri = state.receiptUri;
 
-    if (amount <= 0) {
-      showErrorMessage(
-        "Informe um valor válido para a despesa.",
-        "commonError",
-      );
-      return;
-    }
-
     if (!description) {
-      showErrorMessage("Informe uma descrição para a despesa.", "commonError");
+      showErrorMessage("Informe uma descrição para o pagamento.", "commonError");
       return;
     }
 
     resetForm();
     onClose();
 
-    createExpense({
+    createPayment({
+      expenseId,
       groupId,
       description,
-      amount,
-      receiptUri,
+      transferReceiptUri: receiptUri,
     })
       .then((result) => {
         onSuccess?.();
 
         if (result.receiptUploadFailed) {
           showErrorMessage(
-            "Despesa criada, mas o comprovante não pôde ser enviado.",
+            "Pagamento registrado, mas o comprovante não pôde ser enviado.",
             "commonError",
           );
         }
@@ -254,7 +217,7 @@ export default function AddExpenseForm({
             style={{ paddingRight: responsiveWidth(14) }}
             className="text-3xl text-blackapp self-start font-black w-full z-30"
           >
-            Nova Despesa
+            Registrar Pagamento
           </Text>
 
           <View
@@ -262,20 +225,9 @@ export default function AddExpenseForm({
             className="flex flex-col w-full z-30"
           >
             <Text className="text-sm text-blprimary self-start font-semibold">
-              Registre uma despesa do grupo. O valor será dividido entre os
-              membros.
+              Informe os dados do pagamento. O valor será calculado
+              automaticamente.
             </Text>
-
-            <View className="w-full gap-1">
-              <Text className="text-sm text-blackapp font-bold">Valor</Text>
-              <TextInput
-                placeholder="R$ 0,00"
-                value={state.amount}
-                onChangeText={handleAmountChange}
-                keyboardType="numeric"
-                className="border-[3px] border-blackapp p-2 text-blackapp text-base font-medium w-full"
-              />
-            </View>
 
             <View className="w-full gap-1">
               <View className="flex-row justify-between items-center">
@@ -287,7 +239,7 @@ export default function AddExpenseForm({
                 </Text>
               </View>
               <TextInput
-                placeholder="Ex: Churrasco, Uber, Mercado..."
+                placeholder="Ex: Pix enviado, transferência..."
                 value={state.description}
                 onChangeText={handleDescriptionChange}
                 maxLength={DESCRIPTION_MAX_LENGTH}
@@ -331,7 +283,7 @@ export default function AddExpenseForm({
               className="bg-hlblue w-full py-3 items-center justify-center self-stretch"
               onPress={handleSubmit}
             >
-              <Text className="text-xl text-white font-bold">ADICIONAR</Text>
+              <Text className="text-xl text-white font-bold">REGISTRAR</Text>
             </Pressable>
           </View>
         </Pressable>

@@ -13,7 +13,6 @@ import {
   TextInput,
   Animated,
   Easing,
-  ActivityIndicator,
 } from "react-native";
 
 // GroupService
@@ -58,7 +57,6 @@ export default function JoinGroupForm({
     new Promise((resolve) => setTimeout(resolve, ms));
 
   const [showXFlag, setXFlag] = useState(false);
-  const [loading, setLoading] = useState(false);
   const pressAnim = useRef(new Animated.Value(0)).current;
 
   const [state, setState] = useState<JoinGroupFormState>({
@@ -73,7 +71,6 @@ export default function JoinGroupForm({
   const resetForm = () => {
     resetPressAnim();
     setState({ inviteCode: "" });
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -82,7 +79,7 @@ export default function JoinGroupForm({
   }, [visible]);
 
   const handleClose = async () => {
-    if (showXFlag || loading) return;
+    if (showXFlag) return;
     setXFlag(true);
     await sleep(200);
     resetForm();
@@ -94,26 +91,19 @@ export default function JoinGroupForm({
     setState((prev) => ({ ...prev, inviteCode: text }));
   };
 
-  const handleJoin = async () => {
-    if (loading) return;
-
+  const handleJoin = () => {
     const inviteCode = state.inviteCode.trim();
     if (!inviteCode) {
       showErrorMessage("Cole o código do convite.", "commonError");
       return;
     }
 
-    setLoading(true);
+    resetForm();
+    onClose();
 
-    try {
-      await joinGroup(inviteCode);
-      resetForm();
-      onClose();
-    } catch (err) {
+    joinGroup(inviteCode).catch((err) => {
       showErrorMessage(getErrorMessage(err), "commonError");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const onPressIn = () => {
@@ -153,10 +143,10 @@ export default function JoinGroupForm({
         <Pressable
           style={{
             width: responsiveWidth(90),
-            minHeight: responsiveHeight(34),
-            maxHeight: responsiveHeight(40),
+            paddingTop: responsiveHeight(1),
+            gap: responsiveHeight(2),
           }}
-          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start z-[101]"
+          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
           <Pressable
@@ -164,18 +154,23 @@ export default function JoinGroupForm({
             className="absolute top-4 right-4 z-50"
             onPressIn={onPressIn}
             onPressOut={onPressOut}
-            disabled={loading}
           >
             <Animated.View style={{ backgroundColor: bgColor }} className="p-2">
               <X size={32} color="#fff" />
             </Animated.View>
           </Pressable>
 
-          <Text className="text-4xl text-blackapp self-start top-2 font-black w-full z-30 pr-12">
+          <Text
+            style={{ paddingRight: responsiveWidth(14) }}
+            className="text-4xl text-blackapp self-start font-black w-full z-30"
+          >
             Entrar em um Grupo
           </Text>
 
-          <View className="flex flex-col items-center justify-center gap-4 top-8 w-full z-30">
+          <View
+            style={{ gap: responsiveHeight(2) }}
+            className="flex flex-col items-stretch w-full z-30"
+          >
             <Text className="text-sm text-blprimary self-start font-semibold">
               Cole o código do convite que você recebeu para entrar no grupo.
             </Text>
@@ -183,21 +178,15 @@ export default function JoinGroupForm({
               placeholder="Código do convite"
               value={state.inviteCode}
               onChangeText={handleInviteCodeChange}
-              editable={!loading}
               autoCapitalize="none"
               autoCorrect={false}
               className="border-[3px] border-blackapp p-2 text-blackapp text-base font-medium w-full"
             />
             <Pressable
-              className={`bg-hlblue w-[100%] py-2 pr-2 pb-4 items-center flex-row justify-center gap-2 ${loading ? "opacity-70" : ""}`}
+              className="bg-hlblue w-full py-3 items-center justify-center self-stretch"
               onPress={handleJoin}
-              disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-xl text-white font-bold">ENTRAR</Text>
-              )}
+              <Text className="text-xl text-white font-bold">ENTRAR</Text>
             </Pressable>
           </View>
         </Pressable>

@@ -39,10 +39,22 @@ export type GroupExpenseInfo = {
   payments_faltantes: number;
 };
 
+export type GroupPaymentInfo = {
+  id: string;
+  expense_id: string;
+  group_id: string;
+  paid_by: string;
+  amount: number;
+  description: string;
+  transfer_receipt_url: string | null;
+  created_at: string;
+};
+
 export type GroupInfo = {
   group: Group;
   members: GroupMemberInfo[];
   expenses: GroupExpenseInfo[];
+  payments?: GroupPaymentInfo[];
 };
 
 export type RpcActionResult = {

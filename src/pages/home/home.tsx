@@ -386,8 +386,8 @@ export default function Home() {
           {/* Zona Supeior FIM */}
           {/* Zona inferior */}
           <View
-            style={{ height: responsiveHeight(30) }}
-            className="w-full flex flex-row items-center justify-center border-t-[10px] border-blackapp"
+            style={{ height: responsiveHeight(20) }}
+            className="w-full flex flex-row items-start justify-center border-t-[10px] border-blackapp"
           >
             <Pressable
               onPressIn={onJoinPressIn}
