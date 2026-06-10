@@ -53,6 +53,7 @@ export default function CreateGroupForm({
   visible,
   onClose,
 }: CreateGroupFormProps) {
+  // sleep | Aguarda ms antes de fechar o modal
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -63,11 +64,13 @@ export default function CreateGroupForm({
     groupName: "",
   });
 
+  // resetPressAnim | Restaura animação do botão fechar
   const resetPressAnim = () => {
     pressAnim.stopAnimation();
     pressAnim.setValue(0);
   };
 
+  // resetForm | Limpa campos e animação ao abrir/fechar
   const resetForm = () => {
     resetPressAnim();
     setState({ groupName: "" });
@@ -78,6 +81,7 @@ export default function CreateGroupForm({
     resetForm();
   }, [visible]);
 
+  // handleClose | Fecha modal com delay para animação do X
   const handleClose = async () => {
     if (showXFlag) return;
     setXFlag(true);
@@ -87,10 +91,12 @@ export default function CreateGroupForm({
     setXFlag(false);
   };
 
+  // handleGroupNameChange | Atualiza nome do grupo no estado
   const handleGroupNameChange = (text: string) => {
     setState((prev) => ({ ...prev, groupName: text }));
   };
 
+  // handleCreate | Valida e cria grupo via GroupService
   const handleCreate = () => {
     const trimmedName = state.groupName.trim();
     if (!trimmedName) {
@@ -106,6 +112,7 @@ export default function CreateGroupForm({
     });
   };
 
+  // onPressIn | Anima botão fechar para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -115,6 +122,7 @@ export default function CreateGroupForm({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão fechar
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -149,6 +157,7 @@ export default function CreateGroupForm({
           className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
+          {/* INICIO CABEÇALHO */}
           <Pressable
             onPress={handleClose}
             className="absolute top-4 right-4 z-50"
@@ -166,7 +175,9 @@ export default function CreateGroupForm({
           >
             Criar Grupo
           </Text>
+          {/* FIM CABEÇALHO */}
 
+          {/* INICIO FORMULÁRIO */}
           <View
             style={{ gap: responsiveHeight(2) }}
             className="flex flex-col items-stretch w-full z-30"
@@ -188,6 +199,7 @@ export default function CreateGroupForm({
               <Text className="text-xl text-white font-bold">CRIAR</Text>
             </Pressable>
           </View>
+          {/* FIM FORMULÁRIO */}
         </Pressable>
       </Pressable>
     </Modal>

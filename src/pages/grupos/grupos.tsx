@@ -86,6 +86,7 @@ function GroupBalanceBadge({ groupId, syncToken }: GroupBalanceBadgeProps) {
     areceber: 0,
   });
 
+  // loadBalance | Carrega balance do grupo com peek + calculate
   useEffect(() => {
     let cancelled = false;
 
@@ -144,6 +145,7 @@ function GroupListButton({
     ],
   });
 
+  // onPressIn | Anima item da lista para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -153,6 +155,7 @@ function GroupListButton({
     }).start();
   };
 
+  // onPressOut | Restaura cor do item da lista
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -256,12 +259,15 @@ export default function Grupos() {
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
+      {/* INICIO ESPAÇAMENTO SUPERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO SUPERIOR */}
+      {/* INICIO CONTEÚDO */}
       <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
         <View
           style={{ width: responsiveWidth(80) }}
@@ -335,12 +341,15 @@ export default function Grupos() {
           className="h-full border-l-[8px] border-b-[8px] border-blackapp"
         />
       </View>
+      {/* FIM CONTEÚDO */}
+      {/* INICIO ESPAÇAMENTO INFERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO INFERIOR */}
     </View>
   );
 }

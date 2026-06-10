@@ -11,6 +11,8 @@ import type { ActivityType } from "../../lib/ActivityService";
 import Atividade from "./atividade";
 import DetalheAtividade from "./sons/DetalheAtividade";
 
+// Área Tipos | Rotas do stack de atividade
+
 export type AtividadeStackParamList = {
   AtividadeMain: undefined;
   DetalheAtividade: { activityId: string; activityType: ActivityType };

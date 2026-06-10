@@ -12,6 +12,8 @@ import MembrosGrupo from "./sons/MembrosGrupo";
 import ConvidarGrupo from "./sons/ConvidarGrupo";
 import type { GroupMemberInfo } from "../../lib/GroupService";
 
+// Área Tipos | Rotas do stack de grupos
+
 export type GruposStackParamList = {
   GruposMain: undefined;
   DetalheGrupo: { groupId: string };

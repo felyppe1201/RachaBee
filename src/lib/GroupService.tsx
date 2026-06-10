@@ -4,6 +4,8 @@ import { supabase } from "./supabase";
 // Cache
 import { getCached, removeCached, syncCache } from "./cacheService";
 
+// Área Tipos | Modelos de dados de grupos
+
 export type Group = {
   id: string;
   name: string;

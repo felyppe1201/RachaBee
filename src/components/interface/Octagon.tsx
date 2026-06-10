@@ -1,6 +1,13 @@
+// React
 import React, { useState } from "react";
+
+// React Native
 import { View, StyleSheet, ViewStyle, LayoutChangeEvent } from "react-native";
+
+// SVG
 import Svg, { Polygon, Defs, Filter, FeDropShadow } from "react-native-svg";
+
+// Temas
 import { themas } from "../../global/themes";
 
 type Props = {
@@ -13,6 +20,7 @@ type Props = {
   points?: string;
 };
 
+// Octagon | Forma octogonal SVG com sombra e cores do tema
 export const Octagon: React.FC<Props> = ({
   color = "primary",
   stroke,
@@ -20,10 +28,11 @@ export const Octagon: React.FC<Props> = ({
   style,
   points,
 }) => {
-  // dimensões reais do container em pixels
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const colors: any = (themas && (themas as any).colors) || {};
+
+  // resolve | Converte chave do tema ou retorna valor literal
   const resolve = (c?: string) => {
     if (!c) return undefined;
     return colors[c] ?? c;
@@ -32,13 +41,13 @@ export const Octagon: React.FC<Props> = ({
   const fill = resolve(color);
   const strokeColor = resolve(stroke);
 
+  // computeRegularOctagon | Gera pontos de octógono regular no viewBox
   const computeRegularOctagon = (
     radius = 45,
     cx = 50,
     cy = 50,
     rotationDeg = 22.5,
   ) => {
-    // rotationDeg default 22.5 so bottom becomes a flat edge
     const ptsArr: string[] = [];
     const start = -90 + rotationDeg;
     for (let i = 0; i < 8; i++) {
@@ -51,10 +60,10 @@ export const Octagon: React.FC<Props> = ({
     return ptsArr.join(" ");
   };
 
-  // reduce radius a bit if stroke exists to avoid clipping
   const strokeOffset = strokeWidth ? Math.min(strokeWidth, 6) : 0;
   const pts = points ?? computeRegularOctagon(45 - strokeOffset);
 
+  // handleLayout | Captura dimensões do container para renderizar o SVG
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setSize({ width, height });

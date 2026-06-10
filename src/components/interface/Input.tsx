@@ -1,4 +1,7 @@
+// React
 import React, { forwardRef, Fragment, LegacyRef } from "react";
+
+// React Native
 import {
   View,
   TextInput,
@@ -6,7 +9,11 @@ import {
   type TextInputProps,
   TouchableOpacity,
 } from "react-native";
+
+// Expo Icons
 import { MaterialIcons, FontAwesome, Octicons } from "@expo/vector-icons";
+
+// Temas
 import { themas } from "../../global/themes";
 
 type IconComponent =
@@ -24,6 +31,7 @@ type Props = TextInputProps & {
   onIconRightPress?: () => void;
 };
 
+// Input | Campo de texto com ícones opcionais e título
 export const Input = forwardRef(
   (Props: Props, ref: LegacyRef<TextInput> | null) => {
     const {
@@ -37,12 +45,14 @@ export const Input = forwardRef(
       ...rest
     } = Props;
 
+    // getInputWidth | Ajusta largura conforme ícones presentes
     const getInputWidth = () => {
       if (IconLeft && IconRight) return "w-[80%]";
       if (IconLeft || IconRight) return "w-[90%]";
       return "w-full";
     };
 
+    // getPaddingLeft | Ajusta padding conforme ícones presentes
     const getPaddingLeft = () => {
       if (IconLeft && IconRight) return "pl-[10px]";
       if (IconLeft || IconRight) return "pl-[15px]";

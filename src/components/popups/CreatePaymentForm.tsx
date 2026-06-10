@@ -67,6 +67,7 @@ export default function CreatePaymentForm({
   expenseId,
   onSuccess,
 }: CreatePaymentFormProps) {
+  // sleep | Aguarda ms antes de fechar o modal
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -78,11 +79,13 @@ export default function CreatePaymentForm({
     receiptUri: null,
   });
 
+  // resetPressAnim | Restaura animação do botão fechar
   const resetPressAnim = () => {
     pressAnim.stopAnimation();
     pressAnim.setValue(0);
   };
 
+  // resetForm | Limpa campos e animação ao abrir/fechar
   const resetForm = () => {
     resetPressAnim();
     setState({ description: "", receiptUri: null });
@@ -93,6 +96,7 @@ export default function CreatePaymentForm({
     resetForm();
   }, [visible]);
 
+  // handleClose | Fecha modal com delay para animação do X
   const handleClose = async () => {
     if (showXFlag) return;
     setXFlag(true);
@@ -102,11 +106,13 @@ export default function CreatePaymentForm({
     setXFlag(false);
   };
 
+  // handleDescriptionChange | Atualiza descrição respeitando limite
   const handleDescriptionChange = (text: string) => {
     if (text.length > DESCRIPTION_MAX_LENGTH) return;
     setState((prev) => ({ ...prev, description: text }));
   };
 
+  // handlePickReceipt | Abre galeria e seleciona comprovante
   const handlePickReceipt = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -126,6 +132,7 @@ export default function CreatePaymentForm({
     }
   };
 
+  // handleSubmit | Valida e registra pagamento via ExpenseService
   const handleSubmit = () => {
     const description = state.description.trim();
     const receiptUri = state.receiptUri;
@@ -159,6 +166,7 @@ export default function CreatePaymentForm({
       });
   };
 
+  // onPressIn | Anima botão fechar para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -168,6 +176,7 @@ export default function CreatePaymentForm({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão fechar
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -202,6 +211,7 @@ export default function CreatePaymentForm({
           className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
+          {/* INICIO CABEÇALHO */}
           <Pressable
             onPress={handleClose}
             className="absolute top-4 right-4 z-50"
@@ -219,7 +229,9 @@ export default function CreatePaymentForm({
           >
             Registrar Pagamento
           </Text>
+          {/* FIM CABEÇALHO */}
 
+          {/* INICIO FORMULÁRIO */}
           <View
             style={{ gap: responsiveHeight(2) }}
             className="flex flex-col w-full z-30"
@@ -286,6 +298,7 @@ export default function CreatePaymentForm({
               <Text className="text-xl text-white font-bold">REGISTRAR</Text>
             </Pressable>
           </View>
+          {/* FIM FORMULÁRIO */}
         </Pressable>
       </Pressable>
     </Modal>

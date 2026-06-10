@@ -98,6 +98,7 @@ function AnimatedActionButton({
     outputRange: [baseColor, pressedColor],
   });
 
+  // onPressIn | Anima botão para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -107,6 +108,7 @@ function AnimatedActionButton({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -262,17 +264,21 @@ export default function DetalheAtividade({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
+      {/* INICIO ESPAÇAMENTO SUPERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO SUPERIOR */}
+      {/* INICIO CONTEÚDO */}
       <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
         <View
           style={{ width: responsiveWidth(100) }}
           className="h-full flex flex-col items-center justify-start border-b-[8px] border-blackapp"
         >
+          {/* INICIO CABEÇALHO */}
           <View
             style={{ width: responsiveWidth(100) }}
             className="border-b-[8px] border-blackapp flex items-end justify-center px-6 py-4"
@@ -288,7 +294,9 @@ export default function DetalheAtividade({ navigation, route }: Props) {
               </Text>
             )}
           </View>
+          {/* FIM CABEÇALHO */}
 
+          {/* INICIO DETALHES */}
           <ScrollView
             className="flex-1 w-full"
             contentContainerStyle={{
@@ -370,9 +378,12 @@ export default function DetalheAtividade({ navigation, route }: Props) {
               </>
             ) : null}
           </ScrollView>
+          {/* FIM DETALHES */}
         </View>
       </View>
+      {/* FIM CONTEÚDO */}
 
+      {/* INICIO RODAPÉ */}
       <View
         style={{
           height: responsiveHeight(10),
@@ -391,7 +402,9 @@ export default function DetalheAtividade({ navigation, route }: Props) {
           <Text className="text-2xl text-white font-bold">VOLTAR</Text>
         </AnimatedActionButton>
       </View>
+      {/* FIM RODAPÉ */}
 
+      {/* INICIO MODAL COMPROVANTE */}
       {receiptUrl ? (
         <Modal
           visible={showFullscreenReceipt}
@@ -420,6 +433,7 @@ export default function DetalheAtividade({ navigation, route }: Props) {
           </Pressable>
         </Modal>
       ) : null}
+      {/* FIM MODAL COMPROVANTE */}
     </View>
   );
 }

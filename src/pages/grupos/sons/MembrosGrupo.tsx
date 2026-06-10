@@ -194,6 +194,7 @@ export default function MembrosGrupo({ navigation, route }: Props) {
 
   const isCreator = profile?.id === createdBy;
 
+  // handleShareInvite | Gera convite e abre compartilhamento nativo
   const handleShareInvite = async () => {
     if (!profile?.id || loadingInvite) return;
 

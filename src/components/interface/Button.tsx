@@ -1,10 +1,15 @@
+// React
 import React from "react";
+
+// React Native
 import {
   ActivityIndicator,
   Text,
   TouchableHighlightProps,
   TouchableOpacity,
 } from "react-native";
+
+// Temas
 import { themas } from "../../global/themes";
 
 type Props = TouchableHighlightProps & {
@@ -12,6 +17,7 @@ type Props = TouchableHighlightProps & {
   loading?: boolean;
 };
 
+// Button | Botão primário com estado de carregamento
 export function Button({ ...rest }: Props) {
   return (
     <TouchableOpacity

@@ -30,7 +30,7 @@ type UserContextType = {
   balance: UserBalance;
   loadUser: (userId: string) => Promise<void>;
   clearUser: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
+  refreshBalance: () => Promise<boolean>;
 };
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -73,12 +73,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  // refreshBalance | recalcula balance e atualiza contexto só se mudou
-  const refreshBalance = useCallback(async () => {
+  // refreshBalance | exibe cache imediato e sincroniza via RPC; atualiza contexto só se mudou
+  const refreshBalance = useCallback(async (): Promise<boolean> => {
+    const cachedBalance = await peekBalance();
+    if (cachedBalance) {
+      setBalance(cachedBalance);
+    }
+
     const freshBalance = await calculateBalance();
     setBalance((prev) =>
       areCacheEqual(prev, freshBalance) ? prev : freshBalance
     );
+
+    return !!cachedBalance;
   }, []);
 
   // clearUser | reseta tudo e limpa caches

@@ -220,12 +220,15 @@ export default function Atividade() {
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
+      {/* INICIO ESPAÇAMENTO SUPERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO SUPERIOR */}
+      {/* INICIO CONTEÚDO */}
       <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
         <View
           style={{ width: responsiveWidth(20) }}
@@ -288,12 +291,15 @@ export default function Atividade() {
           </View>
         </View>
       </View>
+      {/* FIM CONTEÚDO */}
+      {/* INICIO ESPAÇAMENTO INFERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO INFERIOR */}
     </View>
   );
 }

@@ -83,6 +83,7 @@ export default function AddExpenseForm({
   groupId,
   onSuccess,
 }: AddExpenseFormProps) {
+  // sleep | Aguarda ms antes de fechar o modal
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -95,11 +96,13 @@ export default function AddExpenseForm({
     receiptUri: null,
   });
 
+  // resetPressAnim | Restaura animação do botão fechar
   const resetPressAnim = () => {
     pressAnim.stopAnimation();
     pressAnim.setValue(0);
   };
 
+  // resetForm | Limpa campos e animação ao abrir/fechar
   const resetForm = () => {
     resetPressAnim();
     setState({
@@ -114,6 +117,7 @@ export default function AddExpenseForm({
     resetForm();
   }, [visible]);
 
+  // handleClose | Fecha modal com delay para animação do X
   const handleClose = async () => {
     if (showXFlag) return;
     setXFlag(true);
@@ -123,6 +127,7 @@ export default function AddExpenseForm({
     setXFlag(false);
   };
 
+  // handleAmountChange | Atualiza valor com máscara BRL
   const handleAmountChange = (text: string) => {
     setState((prev) => ({
       ...prev,
@@ -130,11 +135,13 @@ export default function AddExpenseForm({
     }));
   };
 
+  // handleDescriptionChange | Atualiza descrição respeitando limite
   const handleDescriptionChange = (text: string) => {
     if (text.length > DESCRIPTION_MAX_LENGTH) return;
     setState((prev) => ({ ...prev, description: text }));
   };
 
+  // handlePickReceipt | Abre galeria e seleciona comprovante
   const handlePickReceipt = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -154,6 +161,7 @@ export default function AddExpenseForm({
     }
   };
 
+  // handleSubmit | Valida e cria despesa via ExpenseService
   const handleSubmit = () => {
     const amount = parseCurrencyInput(state.amount);
     const description = state.description.trim();
@@ -196,6 +204,7 @@ export default function AddExpenseForm({
       });
   };
 
+  // onPressIn | Anima botão fechar para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -205,6 +214,7 @@ export default function AddExpenseForm({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão fechar
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -239,6 +249,7 @@ export default function AddExpenseForm({
           className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
+          {/* INICIO CABEÇALHO */}
           <Pressable
             onPress={handleClose}
             className="absolute top-4 right-4 z-50"
@@ -251,14 +262,22 @@ export default function AddExpenseForm({
           </Pressable>
 
           <Text
-            style={{ paddingRight: responsiveWidth(14) }}
+            style={{
+              paddingRight: responsiveWidth(14),
+              paddingTop: responsiveHeight(1),
+            }}
             className="text-3xl text-blackapp self-start font-black w-full z-30"
           >
             Nova Despesa
           </Text>
+          {/* FIM CABEÇALHO */}
 
+          {/* INICIO FORMULÁRIO */}
           <View
-            style={{ gap: responsiveHeight(2) }}
+            style={{
+              gap: responsiveHeight(2),
+              paddingTop: responsiveHeight(1),
+            }}
             className="flex flex-col w-full z-30"
           >
             <Text className="text-sm text-blprimary self-start font-semibold">
@@ -334,6 +353,7 @@ export default function AddExpenseForm({
               <Text className="text-xl text-white font-bold">ADICIONAR</Text>
             </Pressable>
           </View>
+          {/* FIM FORMULÁRIO */}
         </Pressable>
       </Pressable>
     </Modal>

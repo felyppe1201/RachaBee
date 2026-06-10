@@ -32,9 +32,6 @@ import { signOut } from "../../lib/authService";
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
 import JoinGroupForm from "../../components/popups/JoinGroupForm";
 
-// Balance
-import { peekBalance } from "../../lib/BalanceService";
-
 // Temas
 import { themas } from "../../global/themes";
 
@@ -48,6 +45,7 @@ import { moderateScale } from "react-native-size-matters";
 
 type LoadMode = "initial" | "silent" | "pull";
 
+// Home | Tela inicial com saldo, criar grupo e aceitar convite
 export default function Home() {
   const { profile, balance, refreshBalance } = useUser();
   const [showPopupCreateGroup, setShowPopupCreateGroup] = useState(false);
@@ -60,6 +58,7 @@ export default function Home() {
   const pressAnim = useRef(new Animated.Value(0)).current;
   const joinPressAnim = useRef(new Animated.Value(0)).current;
 
+  // onPressIn | Anima botão criar grupo para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -69,6 +68,7 @@ export default function Home() {
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão criar grupo
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -83,6 +83,7 @@ export default function Home() {
     outputRange: [themas.colors.hlpink, themas.colors.hlpinkmd],
   });
 
+  // onJoinPressIn | Anima botão aceitar convite para cor pressionada
   const onJoinPressIn = () => {
     Animated.timing(joinPressAnim, {
       toValue: 1,
@@ -92,6 +93,7 @@ export default function Home() {
     }).start();
   };
 
+  // onJoinPressOut | Restaura cor do botão aceitar convite
   const onJoinPressOut = () => {
     Animated.timing(joinPressAnim, {
       toValue: 0,
@@ -106,23 +108,23 @@ export default function Home() {
     outputRange: [themas.colors.hlblue, themas.colors.hlbluemd],
   });
 
-  // fetchBalance | Exibe cache imediato e sincroniza via calculateBalance
+  // fetchBalance | Sincroniza saldo via refreshBalance do contexto
   const fetchBalance = useCallback(
     async (mode: LoadMode = "initial") => {
       if (mode === "pull") {
         setRefreshing(true);
       }
 
-      const cached = await peekBalance();
-
       if (mode !== "pull") {
         setError(null);
       }
 
+      let hadCache = false;
+
       try {
-        await refreshBalance();
+        hadCache = await refreshBalance();
       } catch (err) {
-        if (!cached) {
+        if (!hadCache) {
           setError(
             err instanceof Error
               ? err.message
@@ -428,6 +430,7 @@ export default function Home() {
         </View>
         {/* FIM CONTEÚDO */}
       </ScrollView>
+      {/* INICIO POPUPS */}
       <CreateGroupForm
         visible={showPopupCreateGroup}
         onClose={() => setShowPopupCreateGroup(false)}
@@ -436,6 +439,7 @@ export default function Home() {
         visible={showPopupJoinGroup}
         onClose={() => setShowPopupJoinGroup(false)}
       />
+      {/* FIM POPUPS */}
     </>
   );
 }

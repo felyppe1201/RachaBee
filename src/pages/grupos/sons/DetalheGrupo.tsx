@@ -96,6 +96,7 @@ function AnimatedActionButton({
     outputRange: [baseColor, pressedColor],
   });
 
+  // onPressIn | Anima botão para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -105,6 +106,7 @@ function AnimatedActionButton({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -153,6 +155,7 @@ function AnimatedPlusButton({
     outputRange: [themas.colors.primary, themas.colors.mdprimary],
   });
 
+  // onPressIn | Anima botão + para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -162,6 +165,7 @@ function AnimatedPlusButton({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão +
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -358,6 +362,7 @@ export default function DetalheGrupo({ navigation, route }: Props) {
     [members],
   );
 
+  // handleLeaveOrDelete | Confirma e executa saída ou exclusão do grupo
   const handleLeaveOrDelete = () => {
     if (!groupInfo || actionLoading) return;
 
@@ -401,17 +406,21 @@ export default function DetalheGrupo({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
+      {/* INICIO ESPAÇAMENTO SUPERIOR */}
       <View
         style={{
           height: responsiveHeight(5),
           width: responsiveWidth(100),
         }}
       />
+      {/* FIM ESPAÇAMENTO SUPERIOR */}
+      {/* INICIO CONTEÚDO */}
       <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
         <View
           style={{ width: responsiveWidth(100) }}
           className="h-full flex flex-col items-center justify-start border-b-[8px] border-blackapp"
         >
+          {/* INICIO CABEÇALHO */}
           <View
             style={{ width: responsiveWidth(100) }}
             className="border-b-[8px] border-blackapp flex items-end justify-center px-6 relative"
@@ -435,8 +444,10 @@ export default function DetalheGrupo({ navigation, route }: Props) {
               </>
             )}
           </View>
+          {/* FIM CABEÇALHO */}
 
           <View className="flex-1 w-full flex flex-col items-center justify-start">
+            {/* INICIO AÇÕES */}
             <AnimatedActionButton
               baseColor={themas.colors.hlblue}
               pressedColor={themas.colors.hlbluemd}
@@ -482,7 +493,9 @@ export default function DetalheGrupo({ navigation, route }: Props) {
                 </>
               )}
             </AnimatedActionButton>
+            {/* FIM AÇÕES */}
 
+            {/* INICIO LISTA DESPESAS */}
             {loading && !groupInfo ? (
               <View className="flex-1 items-center justify-center">
                 <ActivityIndicator size="large" color={themas.colors.primary} />
@@ -534,10 +547,13 @@ export default function DetalheGrupo({ navigation, route }: Props) {
                 )}
               </ScrollView>
             )}
+            {/* FIM LISTA DESPESAS */}
           </View>
         </View>
       </View>
+      {/* FIM CONTEÚDO */}
 
+      {/* INICIO RODAPÉ */}
       <View
         style={{
           height: responsiveHeight(10),
@@ -556,13 +572,16 @@ export default function DetalheGrupo({ navigation, route }: Props) {
           <Text className="text-2xl text-white font-bold">VOLTAR</Text>
         </AnimatedActionButton>
       </View>
+      {/* FIM RODAPÉ */}
 
+      {/* INICIO POPUP */}
       <AddExpenseForm
         visible={showAddExpense}
         onClose={() => setShowAddExpense(false)}
         groupId={groupId}
         onSuccess={() => fetchGroupInfo("silent")}
       />
+      {/* FIM POPUP */}
     </View>
   );
 }
