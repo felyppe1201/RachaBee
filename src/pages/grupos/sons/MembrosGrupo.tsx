@@ -2,7 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 // React
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 
 // React Native
 import {
@@ -15,10 +15,11 @@ import {
   Easing,
   ActivityIndicator,
   Share,
+  RefreshControl,
 } from "react-native";
 
 // Lucide
-import { Undo2, Share2 } from "lucide-react-native";
+import { Undo2, Share2, Crown } from "lucide-react-native";
 
 // Responsividade
 import {
@@ -38,6 +39,7 @@ import { useUser } from "../../../context/UserContext";
 // GroupService
 import {
   buildInviteShareMessage,
+  calculateGroupInfo,
   createGroupInvite,
   type GroupMemberInfo,
 } from "../../../lib/GroupService";
@@ -60,6 +62,7 @@ type AnimatedActionButtonProps = {
 
 type MemberCardProps = {
   member: GroupMemberInfo;
+  isLeader: boolean;
 };
 
 // getErrorMessage | Obtém mensagem de erro legível
@@ -147,7 +150,7 @@ function AnimatedActionButton({
 }
 
 // MemberCard | Cartão de membro com foto, dados e data de entrada
-function MemberCard({ member }: MemberCardProps) {
+function MemberCard({ member, isLeader }: MemberCardProps) {
   return (
     <View className="flex-row justify-between items-center gap-2 pr-4 py-3 border-b-[2px] border-blackapp/20">
       <View className="flex-row items-center gap-3 max-w-[70%] shrink">
@@ -165,9 +168,14 @@ function MemberCard({ member }: MemberCardProps) {
         )}
 
         <View className="shrink h-20 justify-between py-2">
-          <Text className="text-blackapp font-bold text-xl" numberOfLines={2}>
-            {member.name}
-          </Text>
+          <View className="flex-row items-center gap-1.5 shrink">
+            <Text className="text-blackapp font-bold text-xl shrink" numberOfLines={2}>
+              {member.name}
+            </Text>
+            {isLeader ? (
+              <Crown size={20} color={themas.colors.primary} />
+            ) : null}
+          </View>
           <Text className="text-hlpink text-xs mt-0.5" numberOfLines={1}>
             Deve: {formatCurrency(member.devendo)}
           </Text>
@@ -188,11 +196,26 @@ function MemberCard({ member }: MemberCardProps) {
 
 // MembrosGrupo | Lista de membros recebida via navegação
 export default function MembrosGrupo({ navigation, route }: Props) {
-  const { groupId, groupName, members, createdBy } = route.params;
+  const { groupId, groupName, members: initialMembers, createdBy } = route.params;
   const { profile } = useUser();
+  const [members, setMembers] = useState<GroupMemberInfo[]>(initialMembers);
   const [loadingInvite, setLoadingInvite] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isCreator = profile?.id === createdBy;
+
+  // handleRefresh | Sincroniza membros via GetGroupInfoByUUID
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const fresh = await calculateGroupInfo(groupId);
+      setMembers(fresh.members);
+    } catch {
+      // Mantém dados atuais se a sincronização falhar
+    } finally {
+      setRefreshing(false);
+    }
+  }, [groupId]);
 
   // handleShareInvite | Gera convite e abre compartilhamento nativo
   const handleShareInvite = async () => {
@@ -214,6 +237,15 @@ export default function MembrosGrupo({ navigation, route }: Props) {
     }
   };
 
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      colors={[themas.colors.hlpink, themas.colors.hlblue]}
+      tintColor={themas.colors.hlpink}
+    />
+  );
+
   return (
     <View className="flex-1 flex flex-col">
       <View
@@ -223,14 +255,28 @@ export default function MembrosGrupo({ navigation, route }: Props) {
         }}
       />
       <View className="flex-1 border-t-[8px] border-b-[8px] border-blackapp">
-        <ScrollView className="flex-1" contentContainerStyle={{}}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{}}
+          refreshControl={refreshControl}
+          showsVerticalScrollIndicator
+        >
           {members.map((member) => (
-            <MemberCard key={member.user_id} member={member} />
+            <MemberCard
+              key={member.user_id}
+              member={member}
+              isLeader={member.user_id === createdBy}
+            />
           ))}
         </ScrollView>
       </View>
 
-      <View style={{ width: responsiveWidth(100) }} className="pb-4">
+      <View
+        style={{
+          width: responsiveWidth(100),
+          height: responsiveHeight(isCreator ? 18 : 10),
+        }}
+      >
         {isCreator ? (
           <AnimatedActionButton
             baseColor={themas.colors.hlpink}

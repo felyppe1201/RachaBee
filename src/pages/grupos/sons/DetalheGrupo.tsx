@@ -6,7 +6,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
 // Lucide
-import { Undo2, Siren, User, Plus } from "lucide-react-native";
+import { Undo2, Siren, User, Plus, CircleUser } from "lucide-react-native";
 
 // Stack
 import { GruposStackParamList } from "../GruposStack";
@@ -61,9 +61,13 @@ type Props = NativeStackScreenProps<GruposStackParamList, "DetalheGrupo">;
 
 type LoadMode = "initial" | "silent" | "pull";
 
+type ExpenseListVariant = "default" | "own" | "completed";
+
 type ExpenseListItemProps = {
   expense: GroupExpenseInfo;
   payer: { name: string; avatar_url: string | null };
+  variant: ExpenseListVariant;
+  isOwnExpense: boolean;
   onPress: () => void;
 };
 
@@ -220,6 +224,70 @@ function formatCurrency(value: number): string {
   });
 }
 
+// sortByCreatedAtDesc | Ordena despesas da mais recente para a mais antiga
+function sortByCreatedAtDesc(
+  left: GroupExpenseInfo,
+  right: GroupExpenseInfo,
+): number {
+  return (
+    new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+  );
+}
+
+// sortByCreatedAtAsc | Ordena despesas da mais antiga para a mais recente
+function sortByCreatedAtAsc(
+  left: GroupExpenseInfo,
+  right: GroupExpenseInfo,
+): number {
+  return (
+    new Date(left.created_at).getTime() - new Date(right.created_at).getTime()
+  );
+}
+
+// filterVisibleExpenses | Oculta despesas anteriores à entrada do membro no grupo
+function filterVisibleExpenses(
+  expenses: GroupExpenseInfo[],
+  members: GroupMemberInfo[],
+  userId: string | undefined,
+): GroupExpenseInfo[] {
+  if (!userId) return expenses;
+
+  const member = members.find((item) => item.user_id === userId);
+  if (!member) return expenses;
+
+  const joinedAt = new Date(member.joined_at).getTime();
+
+  return expenses.filter(
+    (expense) => new Date(expense.created_at).getTime() >= joinedAt,
+  );
+}
+
+// sortGroupExpenses | Despesas alheias por data; próprias por último em ordem de criação
+function sortGroupExpenses(
+  expenses: GroupExpenseInfo[],
+  userId: string | undefined,
+): GroupExpenseInfo[] {
+  const otherExpenses = expenses.filter(
+    (expense) => expense.paid_by !== userId,
+  );
+  const ownExpenses = expenses.filter((expense) => expense.paid_by === userId);
+
+  return [
+    ...otherExpenses.sort(sortByCreatedAtDesc),
+    ...ownExpenses.sort(sortByCreatedAtAsc),
+  ];
+}
+
+// resolveExpenseListVariant | Define cor do item conforme dono e status de pagamento
+function resolveExpenseListVariant(
+  expense: GroupExpenseInfo,
+  userId: string | undefined,
+): ExpenseListVariant {
+  if (expense.payments_faltantes === 0) return "completed";
+  if (expense.paid_by === userId) return "own";
+  return "default";
+}
+
 // resolvePayer | Obtém nome e avatar de quem pagou a despesa
 function resolvePayer(
   paidBy: string,
@@ -234,11 +302,32 @@ function resolvePayer(
 }
 
 // ExpenseListItem | Botão de despesa na lista
-function ExpenseListItem({ expense, payer, onPress }: ExpenseListItemProps) {
+function ExpenseListItem({
+  expense,
+  payer,
+  variant,
+  isOwnExpense,
+  onPress,
+}: ExpenseListItemProps) {
+  const isColored = variant !== "default";
+  const backgroundClassName =
+    variant === "completed"
+      ? "bg-gray-400"
+      : variant === "own"
+        ? "bg-mdprimary"
+        : "bg-white";
+  const titleClassName = isColored ? "text-white" : "text-blackapp";
+  const subtitleClassName = isColored ? "text-white/90" : "text-blackapp";
+  const metaClassName = isColored ? "text-white/80" : "text-blackapp/70";
+  const dateClassName = isColored ? "text-white/70" : "text-blackapp/60";
+  const valueClassName = isColored
+    ? "text-white font-bold"
+    : "text-hlblue font-bold";
+
   return (
     <Pressable
       onPress={onPress}
-      className="w-full flex-row items-center gap-3 px-4 py-5 pb-10 border-t-[2px] border-blackapp/20 bg-white"
+      className={`w-full flex-row items-center gap-3 px-4 py-5 pb-10 border-t-[2px] border-blackapp/20 ${backgroundClassName}`}
     >
       {payer.avatar_url ? (
         <Image
@@ -254,20 +343,34 @@ function ExpenseListItem({ expense, payer, onPress }: ExpenseListItemProps) {
       )}
 
       <View className="flex-1">
-        <Text className="text-blackapp font-bold text-sm" numberOfLines={1}>
-          {payer.name}
-        </Text>
-        <Text className="text-blackapp text-xs mt-0.5" numberOfLines={1}>
+        <View className="flex-row items-center gap-1.5">
+          <Text
+            className={`${titleClassName} font-bold text-sm shrink`}
+            numberOfLines={1}
+          >
+            {payer.name}
+          </Text>
+          {isOwnExpense ? (
+            <CircleUser
+              size={14}
+              color={isColored ? "#fff" : themas.colors.blackapp}
+            />
+          ) : null}
+        </View>
+        <Text
+          className={`${subtitleClassName} text-xs mt-0.5`}
+          numberOfLines={1}
+        >
           {expense.description}
         </Text>
-        <Text className="text-hlblue font-bold text-xs mt-1">
+        <Text className={`${valueClassName} text-xs mt-1`}>
           {formatCurrency(expense.val_por_participante)} / participante
         </Text>
-        <Text className="text-blackapp/70 text-xs mt-0.5">
+        <Text className={`${metaClassName} text-xs mt-0.5`}>
           Pagos: {expense.payments_feitos} · Faltam:{" "}
           {expense.payments_faltantes}
         </Text>
-        <Text className="text-blackapp/60 text-xs mt-0.5">
+        <Text className={`${dateClassName} text-xs mt-0.5`}>
           {formatExpenseDate(expense.created_at)}
         </Text>
       </View>
@@ -341,6 +444,14 @@ export default function DetalheGrupo({ navigation, route }: Props) {
 
   const members = groupInfo?.members ?? [];
   const expenses = groupInfo?.expenses ?? [];
+  const visibleExpenses = useMemo(
+    () => filterVisibleExpenses(expenses, members, profile?.id),
+    [expenses, members, profile?.id],
+  );
+  const sortedExpenses = useMemo(
+    () => sortGroupExpenses(visibleExpenses, profile?.id),
+    [visibleExpenses, profile?.id],
+  );
 
   const refreshControl = (
     <RefreshControl
@@ -415,16 +526,10 @@ export default function DetalheGrupo({ navigation, route }: Props) {
       />
       {/* FIM ESPAÇAMENTO SUPERIOR */}
       {/* INICIO CONTEÚDO */}
-      <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
-        <View
-          style={{ width: responsiveWidth(100) }}
-          className="h-full flex flex-col items-center justify-start border-b-[8px] border-blackapp"
-        >
+      <View className="flex-1 w-full border-t-[8px] border-blackapp">
+        <View className="h-full w-full flex flex-col items-stretch justify-start border-b-[8px] border-blackapp">
           {/* INICIO CABEÇALHO */}
-          <View
-            style={{ width: responsiveWidth(100) }}
-            className="border-b-[8px] border-blackapp flex items-end justify-center px-6 relative"
-          >
+          <View className="w-full border-b-[8px] border-blackapp flex items-end justify-center px-6 relative">
             {loading && !groupInfo ? (
               <ActivityIndicator size="small" color={themas.colors.hlpink} />
             ) : (
@@ -446,7 +551,10 @@ export default function DetalheGrupo({ navigation, route }: Props) {
           </View>
           {/* FIM CABEÇALHO */}
 
-          <View className="flex-1 w-full flex flex-col items-center justify-start">
+          <View
+            className="flex-1 w-full flex flex-col items-stretch justify-start"
+            style={{ minHeight: 0 }}
+          >
             {/* INICIO AÇÕES */}
             <AnimatedActionButton
               baseColor={themas.colors.hlblue}
@@ -497,15 +605,16 @@ export default function DetalheGrupo({ navigation, route }: Props) {
 
             {/* INICIO LISTA DESPESAS */}
             {loading && !groupInfo ? (
-              <View className="flex-1 items-center justify-center">
+              <View className="flex-1 w-full items-center justify-center">
                 <ActivityIndicator size="large" color={themas.colors.primary} />
               </View>
             ) : error && !groupInfo ? (
               <ScrollView
-                className="flex-1 w-full"
+                style={{ flex: 1, width: "100%" }}
                 contentContainerStyle={{
                   flexGrow: 1,
                   justifyContent: "center",
+                  width: "100%",
                 }}
                 refreshControl={refreshControl}
               >
@@ -515,23 +624,27 @@ export default function DetalheGrupo({ navigation, route }: Props) {
               </ScrollView>
             ) : (
               <ScrollView
-                className="flex-1 w-full"
+                style={{ flex: 1, width: "100%" }}
                 contentContainerStyle={{
-                  flexGrow: expenses.length === 0 ? 1 : undefined,
-                  justifyContent: expenses.length === 0 ? "center" : undefined,
+                  flexGrow: sortedExpenses.length === 0 ? 1 : undefined,
+                  justifyContent:
+                    sortedExpenses.length === 0 ? "center" : undefined,
+                  width: "100%",
                 }}
                 refreshControl={refreshControl}
                 showsVerticalScrollIndicator
               >
-                {expenses.length === 0 ? (
+                {sortedExpenses.length === 0 ? (
                   <Text className="text-blackapp text-center font-bold py-8 px-4">
                     Nenhuma despesa registrada.
                   </Text>
                 ) : (
-                  expenses.map((expense) => (
+                  sortedExpenses.map((expense) => (
                     <ExpenseListItem
                       key={expense.id}
                       expense={expense}
+                      variant={resolveExpenseListVariant(expense, profile?.id)}
+                      isOwnExpense={expense.paid_by === profile?.id}
                       payer={
                         payerMap[expense.paid_by] ??
                         resolvePayer(expense.paid_by, members)

@@ -176,7 +176,7 @@ function GroupListButton({
         style={{ backgroundColor: bgColor }}
         className="w-full flex flex-row px-4 py-3 border-b-[4px] border-blackapp"
       >
-        <View className="flex-1 flex flex-col">
+        <View className="flex-1 flex flex-col pr-1">
           <Text className="text-white font-bold text-base" numberOfLines={1}>
             {group.name}
           </Text>

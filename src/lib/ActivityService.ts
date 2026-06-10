@@ -42,6 +42,7 @@ export type ActivityListItem = {
   id: string;
   type: ActivityType;
   amount: number;
+  description: string;
   created_at: string;
   group_id: string;
   group_name: string;
@@ -165,6 +166,7 @@ export function buildActivityList(
     id: item.id,
     type: "expense",
     amount: item.amount,
+    description: item.description,
     created_at: item.created_at,
     group_id: item.group_id,
     group_name: resolveGroupName(item.group_id, groupNames),
@@ -174,6 +176,7 @@ export function buildActivityList(
     id: item.id,
     type: "payment",
     amount: item.amount,
+    description: item.description,
     created_at: item.created_at,
     group_id: item.group_id,
     group_name: resolveGroupName(item.group_id, groupNames),

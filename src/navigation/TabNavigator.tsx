@@ -144,7 +144,7 @@ function CardTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
     <View
       className="w-full"
-      style={{ height: barHeight, backgroundColor: themas.colors.secondary }}
+      style={{ height: barHeight }}
     >
       <View className="flex-row items-end w-full" style={{ height: barHeight }}>
         {state.routes.map((route, index) => {

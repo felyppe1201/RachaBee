@@ -19,10 +19,10 @@ Documentação do comportamento de cache da aplicação. Objetivo: exibir dados 
 
 ```
 ┌─────────────────────────────────────────┐
-│  Tela / Contexto (React)                  │
+│  Tela / Contexto (React)                │
 │  peek ->exibe cache                     │
 │  calculate ->sincroniza                 │
-│  setState só se areCacheEqual = false    │
+│  setState só se areCacheEqual = false   │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
@@ -65,13 +65,14 @@ Funções base usadas por todos os services.
 
 Exemplos:
 
-| Chave                                | Conteúdo                       |
-| ------------------------------------ | ------------------------------ |
-| `@cache:balance:self`                | Balance global do usuário      |
-| `@cache:balance:group:{groupId}`     | Balance por grupo              |
-| `@cache:balance:expense:{expenseId}` | Split de uma despesa           |
-| `@cache:groups:list`                 | Listagem de grupos com criador |
-| `@cache:user:self`                   | Perfil do usuário logado       |
+| Chave                                 | Conteúdo                       |
+| ------------------------------------- | ------------------------------ |
+| `@cache:balance:self`                 | Balance global do usuário      |
+| `@cache:balance:group:{groupId}`      | Balance por grupo              |
+| `@cache:balance:expense:{expenseId}`  | Split de uma despesa           |
+| `@cache:groups:list`                  | Listagem de grupos com criador |
+| `@cache:expense:payments:{expenseId}` | Pagamentos de uma despesa      |
+| `@cache:user:self`                    | Perfil do usuário logado       |
 
 ---
 

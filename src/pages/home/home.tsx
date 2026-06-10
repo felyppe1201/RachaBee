@@ -25,9 +25,6 @@ import Octagon from "../../components/interface/Octagon";
 // Context
 import { useUser } from "../../context/UserContext";
 
-// authService
-import { signOut } from "../../lib/authService";
-
 // Popups
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
 import JoinGroupForm from "../../components/popups/JoinGroupForm";
@@ -191,7 +188,7 @@ export default function Home() {
           style={{ height: responsiveHeight(16) }}
           className="w-full bg-secondary z-40 border-b-[12px] border-blackapp flex flex-row items-end justify-end pt-10 pb-5 px-10"
         >
-          <Text className="text-blackapp text-2xl font-bold max-w-[60%] max-h-full w-fit">
+          <Text className="text-blackapp text-2xl font-bold max-w-[70%] max-h-full w-fit">
             Olá, {profile?.name}!
           </Text>
         </View>

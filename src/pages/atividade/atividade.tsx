@@ -58,7 +58,7 @@ type ActivityListItemProps = {
 
 // buildGroupNameMap | Monta mapa id -> nome a partir da listagem de grupos
 function buildGroupNameMap(
-  groups: { id: string; name: string }[]
+  groups: { id: string; name: string }[],
 ): GroupNameMap {
   return Object.fromEntries(groups.map((group) => [group.id, group.name]));
 }
@@ -90,7 +90,7 @@ function ActivityListItemRow({ item, onPress }: ActivityListItemProps) {
       className="w-full flex-row items-center gap-3 px-4 py-3 border-b-[3px] border-blackapp/20 bg-white"
     >
       <View
-        className={`w-10 h-10 rounded-full items-center justify-center ${
+        className={`w-10 h-10 rounded-full items-center justify-center shrink-0 ${
           isExpense ? "bg-hlpink" : "bg-hlblue"
         }`}
       >
@@ -106,6 +106,7 @@ function ActivityListItemRow({ item, onPress }: ActivityListItemProps) {
           {formatCurrency(item.amount)}
         </Text>
         <Text className="text-blackapp/60 text-xs mt-0.5">
+          {isExpense ? "Despesa" : "Pagamento"} ·{" "}
           {formatActivityListDate(item.created_at)}
         </Text>
       </View>
@@ -146,7 +147,7 @@ export default function Atividade() {
 
       return groupNames;
     },
-    []
+    [],
   );
 
   // fetchActivities | Exibe cache imediato e sincroniza via calculateActivityFeed
@@ -180,14 +181,14 @@ export default function Atividade() {
         const freshGroupNames = await resolveGroupNames(mode);
         const freshList = buildActivityList(fresh, freshGroupNames);
         setActivities((prev) =>
-          areCacheEqual(prev, freshList) ? prev : freshList
+          areCacheEqual(prev, freshList) ? prev : freshList,
         );
       } catch (err) {
         if (!cachedList?.length) {
           setError(
             err instanceof Error
               ? err.message
-              : "Não foi possível carregar as atividades."
+              : "Não foi possível carregar as atividades.",
           );
         }
       } finally {
@@ -197,14 +198,14 @@ export default function Atividade() {
         }
       }
     },
-    [resolveGroupNames]
+    [resolveGroupNames],
   );
 
   useFocusEffect(
     useCallback(() => {
       fetchActivities(hasVisited.current ? "silent" : "initial");
       hasVisited.current = true;
-    }, [fetchActivities])
+    }, [fetchActivities]),
   );
 
   const refreshControl = (
@@ -261,10 +262,7 @@ export default function Atividade() {
               showsVerticalScrollIndicator
             >
               {showInitialLoader ? (
-                <ActivityIndicator
-                  size="large"
-                  color={themas.colors.primary}
-                />
+                <ActivityIndicator size="large" color={themas.colors.primary} />
               ) : error && activities.length === 0 ? (
                 <Text className="text-blackapp text-center font-bold px-4">
                   {error}

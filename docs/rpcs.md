@@ -18,6 +18,7 @@ Referência das RPCs expostas no backend. Todas as chamadas usam `supabase.rpc(.
 10. [GetActivity](#getactivity)
 11. [CreateExpense](#createexpense)
 12. [CreatePayment](#createpayment)
+13. [GetPaymentsByExpenseUUID](#getpaymentsbyexpenseuuid)
 
 ---
 
@@ -447,6 +448,46 @@ supabase.rpc("CreatePayment", {
 - O `amount` é calculado automaticamente pela RPC com base no total de membros elegíveis pelo `joined_at`.
 - Quem pagou a expense não pode registrar payment para si mesmo.
 - Um usuário só pode registrar um payment por expense.
+
+---
+
+## GetPaymentsByExpenseUUID
+
+Retorna o histórico de pagamentos de uma despesa, ordenado por data de registro.
+
+**Parâmetros**
+
+| Nome         | Tipo   | Obrigatório | Descrição      |
+| ------------ | ------ | ----------- | -------------- |
+| `expense_id` | `uuid` | Sim         | ID da despesa  |
+
+**Retorno**
+
+```typescript
+Array<{
+  id: string;
+  paid_by: string;
+  amount: number;
+  description: string;
+  transfer_receipt_url: string | null;
+  created_at: string;
+  payer_name: string;
+  payer_avatar_url: string | null;
+}>
+```
+
+**Chamada**
+
+```typescript
+supabase.rpc("GetPaymentsByExpenseUUID", {
+  expense_id: "uuid",
+});
+```
+
+**Observações**
+
+- Retorna `[]` se o usuário autenticado não for membro do grupo da despesa.
+- Ordenação ascendente por `created_at` (mais antigo primeiro).
 
 ---
 

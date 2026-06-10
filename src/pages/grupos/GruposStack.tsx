@@ -8,6 +8,7 @@ import { themas } from "../../global/themes";
 import Grupos from "./grupos";
 import DetalheGrupo from "./sons/DetalheGrupo";
 import DetalheExpense from "./sons/DetalheExpense";
+import DetalhePayment from "./sons/DetalhePayment";
 import MembrosGrupo from "./sons/MembrosGrupo";
 import ConvidarGrupo from "./sons/ConvidarGrupo";
 import type { GroupMemberInfo } from "../../lib/GroupService";
@@ -24,8 +25,8 @@ export type GruposStackParamList = {
     createdBy: string;
   };
   DetalheExpense: { groupId: string; expenseId: string };
+  DetalhePayment: { groupId: string; expenseId: string; paymentId: string };
   ConvidarGrupo: { groupId: string };
-  EntrarGrupo: { inviteCode?: string };
 };
 
 const Stack = createNativeStackNavigator<GruposStackParamList>();
@@ -42,6 +43,7 @@ export default function GruposStack() {
       <Stack.Screen name="GruposMain" component={Grupos} />
       <Stack.Screen name="DetalheGrupo" component={DetalheGrupo} />
       <Stack.Screen name="DetalheExpense" component={DetalheExpense} />
+      <Stack.Screen name="DetalhePayment" component={DetalhePayment} />
       <Stack.Screen name="MembrosGrupo" component={MembrosGrupo} />
       <Stack.Screen name="ConvidarGrupo" component={ConvidarGrupo} />
     </Stack.Navigator>
