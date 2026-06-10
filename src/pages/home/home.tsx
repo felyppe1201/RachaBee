@@ -1,4 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
+
+// React Navigation
+import { useFocusEffect } from "@react-navigation/native";
 
 // IMG's
 import Logo from "../../assets/logo.png";
@@ -15,6 +18,7 @@ import {
   Pressable,
   Animated,
   Easing,
+  RefreshControl,
 } from "react-native";
 import Octagon from "../../components/interface/Octagon";
 
@@ -28,6 +32,9 @@ import { signOut } from "../../lib/authService";
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
 import JoinGroupForm from "../../components/popups/JoinGroupForm";
 
+// Balance
+import { peekBalance } from "../../lib/BalanceService";
+
 // Temas
 import { themas } from "../../global/themes";
 
@@ -39,10 +46,15 @@ import {
 
 import { moderateScale } from "react-native-size-matters";
 
+type LoadMode = "initial" | "silent" | "pull";
+
 export default function Home() {
-  const { profile, balance } = useUser();
+  const { profile, balance, refreshBalance } = useUser();
   const [showPopupCreateGroup, setShowPopupCreateGroup] = useState(false);
   const [showPopupJoinGroup, setShowPopupJoinGroup] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasVisited = useRef(false);
   console.log("balance", balance);
 
   const pressAnim = useRef(new Animated.Value(0)).current;
@@ -94,6 +106,54 @@ export default function Home() {
     outputRange: [themas.colors.hlblue, themas.colors.hlbluemd],
   });
 
+  // fetchBalance | Exibe cache imediato e sincroniza via calculateBalance
+  const fetchBalance = useCallback(
+    async (mode: LoadMode = "initial") => {
+      if (mode === "pull") {
+        setRefreshing(true);
+      }
+
+      const cached = await peekBalance();
+
+      if (mode !== "pull") {
+        setError(null);
+      }
+
+      try {
+        await refreshBalance();
+      } catch (err) {
+        if (!cached) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Não foi possível carregar o saldo.",
+          );
+        }
+      } finally {
+        if (mode === "pull") {
+          setRefreshing(false);
+        }
+      }
+    },
+    [refreshBalance],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchBalance(hasVisited.current ? "silent" : "initial");
+      hasVisited.current = true;
+    }, [fetchBalance]),
+  );
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => fetchBalance("pull")}
+      colors={[themas.colors.hlpink, themas.colors.hlblue]}
+      tintColor={themas.colors.hlpink}
+    />
+  );
+
   return (
     <>
       <ScrollView
@@ -101,7 +161,10 @@ export default function Home() {
         contentContainerStyle={{
           flexDirection: "column",
           alignItems: "center",
+          flexGrow: 1,
         }}
+        refreshControl={refreshControl}
+        showsVerticalScrollIndicator
       >
         {/* INICIO HEADER */}
         {/*Logo simbolo*/}
@@ -172,6 +235,11 @@ export default function Home() {
         {/*Fita de Email FIM*/}
         {/* FIM HEADER */}
         {/* INICIO CONTEÚDO */}
+        {error ? (
+          <Text className="text-blackapp text-center font-bold px-4 py-2">
+            {error}
+          </Text>
+        ) : null}
         <View className="w-full h-fitz-20">
           {/* Zona Superior */}
           <View

@@ -4,13 +4,16 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // Temas
 import { themas } from "../../global/themes";
 
+// ActivityService
+import type { ActivityType } from "../../lib/ActivityService";
+
 // Telas
 import Atividade from "./atividade";
 import DetalheAtividade from "./sons/DetalheAtividade";
 
 export type AtividadeStackParamList = {
   AtividadeMain: undefined;
-  DetalheAtividade: { activityId: string };
+  DetalheAtividade: { activityId: string; activityType: ActivityType };
 };
 
 const Stack = createNativeStackNavigator<AtividadeStackParamList>();
