@@ -16,6 +16,8 @@ Referência das RPCs expostas no backend. Todas as chamadas usam `supabase.rpc(.
 8. [ActualBalanceByGroupUUID](#actualbalancebygroupuuid)
 9. [GetValForExpenseUUID](#getvalforexpenseuuid)
 10. [GetActivity](#getactivity)
+11. [CreateExpense](#createexpense)
+12. [CreatePayment](#createpayment)
 
 ---
 
@@ -368,6 +370,83 @@ Nenhum.
 ```typescript
 supabase.rpc("GetActivity");
 ```
+
+---
+
+## CreateExpense
+
+Cria uma nova despesa em um grupo.
+
+**Parâmetros**
+
+| Nome          | Tipo     | Obrigatório | Descrição                    |
+| ------------- | -------- | ----------- | ---------------------------- |
+| `group_id`    | `uuid`   | Sim         | ID do grupo                  |
+| `description` | `string` | Sim         | Descrição da despesa         |
+| `amount`      | `number` | Sim         | Valor total da despesa       |
+| `receipt_url` | `string` | Não         | URL do comprovante da despesa |
+
+**Retorno**
+
+```typescript
+{
+  success: boolean;
+  expense_id: string;
+  total_members: number;
+  val_por_participante: number;
+}
+```
+
+**Chamada**
+
+```typescript
+supabase.rpc("CreateExpense", {
+  group_id: "uuid",
+  description: "Mercado",
+  amount: 150.0,
+  receipt_url: "url_opcional",
+});
+```
+
+---
+
+## CreatePayment
+
+Registra um pagamento para uma despesa.
+
+**Parâmetros**
+
+| Nome                   | Tipo     | Obrigatório | Descrição                          |
+| ---------------------- | -------- | ----------- | ---------------------------------- |
+| `expense_id`           | `uuid`   | Sim         | ID da despesa                      |
+| `description`          | `string` | Sim         | Descrição do pagamento             |
+| `transfer_receipt_url` | `string` | Não         | URL do comprovante da transferência |
+
+**Retorno**
+
+```typescript
+{
+  success: boolean;
+  payment_id: string;
+  amount: number;
+}
+```
+
+**Chamada**
+
+```typescript
+supabase.rpc("CreatePayment", {
+  expense_id: "uuid",
+  description: "Pix enviado",
+  transfer_receipt_url: "url_opcional",
+});
+```
+
+**Observações**
+
+- O `amount` é calculado automaticamente pela RPC com base no total de membros elegíveis pelo `joined_at`.
+- Quem pagou a expense não pode registrar payment para si mesmo.
+- Um usuário só pode registrar um payment por expense.
 
 ---
 

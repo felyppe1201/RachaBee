@@ -60,19 +60,17 @@ const CACHE_KEY_GROUPS_LIST = "@cache:groups:list";
 
 // enrichGroupsWithCreators | Anexa nome do criador a cada grupo
 async function enrichGroupsWithCreators(
-  data: Group[]
+  data: Group[],
 ): Promise<GroupWithCreator[]> {
   const creatorIds = [...new Set(data.map((group) => group.created_by))];
 
-  const creators = await Promise.all(
-    creatorIds.map((id) => getPublicUser(id))
-  );
+  const creators = await Promise.all(creatorIds.map((id) => getPublicUser(id)));
 
   const creatorNames = Object.fromEntries(
     creatorIds.map((id, index) => [
       id,
       creators[index]?.name ?? "Desconhecido",
-    ])
+    ]),
   );
 
   return data.map((group) => ({
@@ -97,8 +95,9 @@ const INVITE_SEPARATOR = ":";
 
 // toBase64 | Codifica string em Base64 compatível com React Native
 function toBase64(value: string): string {
-  const binary = encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16))
+  const binary = encodeURIComponent(value).replace(
+    /%([0-9A-F]{2})/g,
+    (_, hex) => String.fromCharCode(parseInt(hex, 16)),
   );
 
   if (typeof globalThis.btoa !== "function") {
@@ -115,8 +114,9 @@ function fromBase64(value: string): string {
   }
 
   const binary = globalThis.atob(value.trim());
-  const bytes = Array.from(binary, (char) =>
-    `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`
+  const bytes = Array.from(
+    binary,
+    (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`,
   );
 
   return decodeURIComponent(bytes.join(""));
@@ -194,14 +194,14 @@ function extractErrorCode(error: unknown): string | undefined {
 // logGroupServiceError | Registra erro bruto no terminal para debug
 function logGroupServiceError(
   context: GroupServiceContext,
-  error: unknown
+  error: unknown,
 ): void {
   const message = extractErrorMessage(error);
   const code = extractErrorCode(error);
 
   console.error(`[GroupService:${context}]`, error);
   console.error(
-    `[GroupService:${context}] code=${code ?? "n/a"} message=${message}`
+    `[GroupService:${context}] code=${code ?? "n/a"} message=${message}`,
   );
 }
 
@@ -268,7 +268,7 @@ function resolveUserMessage(error: unknown): string {
 // throwGroupServiceError | Loga e propaga erro com mensagem para o usuário
 function throwGroupServiceError(
   context: GroupServiceContext,
-  error: unknown
+  error: unknown,
 ): never {
   logGroupServiceError(context, error);
   throw new Error(resolveUserMessage(error));
@@ -278,7 +278,7 @@ function throwGroupServiceError(
 function assertRpcSuccess(
   context: GroupServiceContext,
   data: RpcActionResult | null,
-  error: unknown
+  error: unknown,
 ): void {
   if (error) throwGroupServiceError(context, error);
   if (!data?.success) {
@@ -359,7 +359,7 @@ export async function calculateGroupInfo(groupId: string): Promise<GroupInfo> {
 
 // peekGroupInfo | Retorna cache do detalhe do grupo sem consultar RPC
 export async function peekGroupInfo(
-  groupId: string
+  groupId: string,
 ): Promise<GroupInfo | null> {
   return getCached<GroupInfo>(groupInfoCacheKey(groupId));
 }
@@ -421,7 +421,7 @@ export async function deleteGroup(groupId: string): Promise<void> {
 
 // getPublicUser | Busca dados públicos de um usuário pelo UUID
 export async function getPublicUser(
-  userId: string
+  userId: string,
 ): Promise<PublicUser | null> {
   const { data, error } = await supabase.rpc("get_user_by_uuid", {
     user_id: userId,
@@ -436,7 +436,7 @@ export async function getPublicUser(
 
 // readInviteCode | Carrega preview do convite (criador + grupo)
 export async function readInviteCode(
-  inviteCode: string
+  inviteCode: string,
 ): Promise<{ user: PublicUser; group: Group }> {
   const { groupId, creatorId } = decodeInvitePayload(inviteCode);
 
@@ -445,7 +445,7 @@ export async function readInviteCode(
 
   const { data: groupInfo, error: groupError } = await supabase.rpc(
     "GetGroupInfoByUUID",
-    { group_id: groupId }
+    { group_id: groupId },
   );
 
   if (groupError) throwGroupServiceError("readInviteCode", groupError);
@@ -457,7 +457,7 @@ export async function readInviteCode(
 // createGroupInvite | Gera código de convite para um grupo existente
 export async function createGroupInvite(
   groupId: string,
-  userId: string
+  userId: string,
 ): Promise<string> {
   const { data, error } = await supabase.rpc("GetGroupInfoByUUID", {
     group_id: groupId,
@@ -467,4 +467,17 @@ export async function createGroupInvite(
   if (!data?.group) throw new Error("Grupo não encontrado");
 
   return encodeInvitePayload(groupId, userId);
+}
+
+// buildInviteShareMessage | Monta texto do convite para compartilhamento nativo
+export function buildInviteShareMessage(
+  inviteCode: string,
+  groupName?: string,
+): string {
+  const groupLabel = groupName ? `"${groupName}"` : "no RachaBee!!";
+
+  return `Entre no grupo ${groupLabel} no RachaBee!
+
+Código do convite:
+${inviteCode}`;
 }

@@ -16,11 +16,13 @@ import {
   ActivityIndicator,
   Image,
   Alert,
-  ScrollView,
 } from "react-native";
 
 // Expo
 import * as ImagePicker from "expo-image-picker";
+
+// ExpenseService
+import { createExpense } from "../../lib/ExpenseService";
 
 // ErrorMessage
 import { showErrorMessage } from "../interface/ErrorMessage";
@@ -40,6 +42,7 @@ type AddExpenseFormProps = {
   visible: boolean;
   onClose: () => void;
   groupId: string;
+  onSuccess?: () => void;
 };
 
 type AddExpenseFormState = {
@@ -65,11 +68,21 @@ function parseCurrencyInput(formatted: string): number {
   return cents / 100;
 }
 
-// AddExpenseForm | Modal placeholder para adicionar nova despesa
+// getErrorMessage | Obtém mensagem de erro legível
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return "Não foi possível adicionar a despesa.";
+}
+
+// AddExpenseForm | Modal para adicionar nova despesa ao grupo
 export default function AddExpenseForm({
   visible,
   onClose,
   groupId,
+  onSuccess,
 }: AddExpenseFormProps) {
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
@@ -151,7 +164,10 @@ export default function AddExpenseForm({
     const description = state.description.trim();
 
     if (amount <= 0) {
-      showErrorMessage("Informe um valor válido para a despesa.", "commonError");
+      showErrorMessage(
+        "Informe um valor válido para a despesa.",
+        "commonError",
+      );
       return;
     }
 
@@ -163,19 +179,25 @@ export default function AddExpenseForm({
     setLoading(true);
 
     try {
-      console.log("[AddExpenseForm:placeholder]", {
+      const result = await createExpense({
         groupId,
-        amount,
         description,
+        amount,
         receiptUri: state.receiptUri,
       });
 
-      Alert.alert(
-        "Em breve",
-        "O cadastro de despesas será implementado em breve."
-      );
+      if (result.receiptUploadFailed) {
+        showErrorMessage(
+          "Despesa criada, mas o comprovante não pôde ser enviado.",
+          "commonError",
+        );
+      }
+
       resetForm();
+      onSuccess?.();
       onClose();
+    } catch (err) {
+      showErrorMessage(getErrorMessage(err), "commonError");
     } finally {
       setLoading(false);
     }
@@ -218,8 +240,7 @@ export default function AddExpenseForm({
         <Pressable
           style={{
             width: responsiveWidth(90),
-            minHeight: responsiveHeight(42),
-            maxHeight: responsiveHeight(52),
+            minHeight: responsiveHeight(72),
           }}
           className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
@@ -231,10 +252,7 @@ export default function AddExpenseForm({
             onPressOut={onPressOut}
             disabled={loading}
           >
-            <Animated.View
-              style={{ backgroundColor: bgColor }}
-              className="p-2"
-            >
+            <Animated.View style={{ backgroundColor: bgColor }} className="p-2">
               <X size={32} color="#fff" />
             </Animated.View>
           </Pressable>
@@ -243,11 +261,7 @@ export default function AddExpenseForm({
             Nova Despesa
           </Text>
 
-          <ScrollView
-            className="w-full top-8 z-30"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ gap: 16, paddingBottom: 8 }}
-          >
+          <View className="flex flex-col gap-4 top-8 w-full z-30">
             <Text className="text-sm text-blprimary self-start font-semibold">
               Registre uma despesa do grupo. O valor será dividido entre os
               membros.
@@ -294,10 +308,11 @@ export default function AddExpenseForm({
               <Pressable
                 onPress={handlePickReceipt}
                 disabled={loading}
-                className="self-start"
+                style={{ height: responsiveHeight(18) }}
+                className="w-full"
               >
                 {state.receiptUri ? (
-                  <View className="w-28 h-28 overflow-hidden border-[3px] border-blackapp bg-zinc-100">
+                  <View className="w-full h-full overflow-hidden border-[3px] border-blackapp bg-zinc-100">
                     <Image
                       source={{ uri: state.receiptUri }}
                       className="w-full h-full"
@@ -305,10 +320,10 @@ export default function AddExpenseForm({
                     />
                   </View>
                 ) : (
-                  <View className="w-28 h-28 border-[3px] border-blackapp border-dashed items-center justify-center bg-zinc-100">
-                    <ImagePlus size={32} color={themas.colors.blackapp} />
-                    <Text className="text-xs text-blackapp/70 mt-2 text-center px-2">
-                      Galeria
+                  <View className="w-full h-full border-[3px] border-blackapp border-dashed items-center justify-center bg-zinc-100">
+                    <ImagePlus size={36} color={themas.colors.blackapp} />
+                    <Text className="text-sm text-blackapp/70 mt-2 text-center px-2">
+                      Selecionar da galeria
                     </Text>
                   </View>
                 )}
@@ -326,7 +341,7 @@ export default function AddExpenseForm({
                 <Text className="text-xl text-white font-bold">ADICIONAR</Text>
               )}
             </Pressable>
-          </ScrollView>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>

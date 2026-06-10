@@ -14,13 +14,11 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  Share,
 } from "react-native";
 
-// Expo
-import * as Clipboard from "expo-clipboard";
-
 // Lucide
-import { Undo2, Link } from "lucide-react-native";
+import { Undo2, Share2 } from "lucide-react-native";
 
 // Responsividade
 import {
@@ -39,6 +37,7 @@ import { useUser } from "../../../context/UserContext";
 
 // GroupService
 import {
+  buildInviteShareMessage,
   createGroupInvite,
   type GroupMemberInfo,
 } from "../../../lib/GroupService";
@@ -189,22 +188,24 @@ function MemberCard({ member }: MemberCardProps) {
 
 // MembrosGrupo | Lista de membros recebida via navegação
 export default function MembrosGrupo({ navigation, route }: Props) {
-  const { groupId, members, createdBy } = route.params;
+  const { groupId, groupName, members, createdBy } = route.params;
   const { profile } = useUser();
-  const [inviteCopied, setInviteCopied] = useState(false);
   const [loadingInvite, setLoadingInvite] = useState(false);
 
   const isCreator = profile?.id === createdBy;
 
-  const handleCreateInvite = async () => {
+  const handleShareInvite = async () => {
     if (!profile?.id || loadingInvite) return;
 
     setLoadingInvite(true);
 
     try {
       const inviteCode = await createGroupInvite(groupId, profile.id);
-      await Clipboard.setStringAsync(inviteCode);
-      setInviteCopied(true);
+
+      await Share.share({
+        message: buildInviteShareMessage(inviteCode, groupName),
+        title: "Convite para o grupo",
+      });
     } catch (err) {
       showErrorMessage(getErrorMessage(err), "commonError");
     } finally {
@@ -236,19 +237,16 @@ export default function MembrosGrupo({ navigation, route }: Props) {
             height={responsiveHeight(8)}
             width={responsiveWidth(100)}
             borderClassName="border-b-[4px] border-blackapp"
-            onPress={handleCreateInvite}
+            onPress={handleShareInvite}
             disabled={loadingInvite}
           >
             {loadingInvite ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Link size={32} color="#fff" className="absolute left-6" />
-                <Text
-                  className="text-base text-white font-bold text-center px-12"
-                  numberOfLines={2}
-                >
-                  {inviteCopied ? "CONVITE COPIADO" : "CRIAR CONVITE"}
+                <Share2 size={32} color="#fff" className="absolute left-6" />
+                <Text className="text-base text-white font-bold text-center px-12">
+                  CONVIDAR AMIGO
                 </Text>
               </>
             )}

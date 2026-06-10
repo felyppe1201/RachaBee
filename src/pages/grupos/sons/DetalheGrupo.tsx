@@ -22,6 +22,7 @@ import {
   Alert,
   Animated,
   Easing,
+  RefreshControl,
 } from "react-native";
 
 // Responsividade
@@ -57,6 +58,8 @@ import {
 import AddExpenseForm from "../../../components/popups/AddExpenseForm";
 
 type Props = NativeStackScreenProps<GruposStackParamList, "DetalheGrupo">;
+
+type LoadMode = "initial" | "silent" | "pull";
 
 type ExpenseListItemProps = {
   expense: GroupExpenseInfo;
@@ -274,36 +277,72 @@ export default function DetalheGrupo({ navigation, route }: Props) {
   const { profile } = useUser();
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const hasVisited = useRef(false);
 
   const isCreator = groupInfo?.group.created_by === profile?.id;
 
-  const loadGroupInfo = useCallback(async () => {
+  // fetchGroupInfo | Exibe cache imediato e sincroniza via calculateGroupInfo
+  const fetchGroupInfo = useCallback(async (mode: LoadMode = "initial") => {
+    if (mode === "pull") {
+      setRefreshing(true);
+    }
+
     const cached = await peekGroupInfo(groupId);
 
-    if (cached) {
-      setGroupInfo(cached);
-      setLoading(false);
-    } else {
-      setLoading(true);
+    if (mode === "initial") {
+      if (cached) {
+        setGroupInfo(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    }
+
+    if (mode !== "pull") {
+      setError(null);
     }
 
     try {
       const fresh = await calculateGroupInfo(groupId);
       setGroupInfo((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
+    } catch (err) {
+      if (!cached) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível carregar as despesas.",
+        );
+      }
     } finally {
       setLoading(false);
+      if (mode === "pull") {
+        setRefreshing(false);
+      }
     }
   }, [groupId]);
 
   useFocusEffect(
     useCallback(() => {
-      loadGroupInfo();
-    }, [loadGroupInfo]),
+      fetchGroupInfo(hasVisited.current ? "silent" : "initial");
+      hasVisited.current = true;
+    }, [fetchGroupInfo]),
   );
 
   const members = groupInfo?.members ?? [];
+  const expenses = groupInfo?.expenses ?? [];
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => fetchGroupInfo("pull")}
+      colors={[themas.colors.hlpink, themas.colors.hlblue]}
+      tintColor={themas.colors.hlpink}
+    />
+  );
 
   const payerMap = useMemo(
     () =>
@@ -404,6 +443,7 @@ export default function DetalheGrupo({ navigation, route }: Props) {
                 if (!groupInfo) return;
                 navigation.navigate("MembrosGrupo", {
                   groupId,
+                  groupName: groupInfo.group.name,
                   members,
                   createdBy: groupInfo.group.created_by,
                 });
@@ -440,37 +480,60 @@ export default function DetalheGrupo({ navigation, route }: Props) {
               )}
             </AnimatedActionButton>
 
-            <ScrollView className="flex-1 w-full" showsVerticalScrollIndicator>
-              {loading && !groupInfo ? (
-                <View className="py-8 items-center">
-                  <ActivityIndicator
-                    size="large"
-                    color={themas.colors.primary}
-                  />
-                </View>
-              ) : groupInfo?.expenses.length === 0 ? (
-                <Text className="text-blackapp text-center font-bold py-8 px-4">
-                  Nenhuma despesa registrada.
+            {loading && !groupInfo ? (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator
+                  size="large"
+                  color={themas.colors.primary}
+                />
+              </View>
+            ) : error && !groupInfo ? (
+              <ScrollView
+                className="flex-1 w-full"
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  justifyContent: "center",
+                }}
+                refreshControl={refreshControl}
+              >
+                <Text className="text-blackapp text-center font-bold px-4">
+                  {error}
                 </Text>
-              ) : (
-                groupInfo?.expenses.map((expense) => (
-                  <ExpenseListItem
-                    key={expense.id}
-                    expense={expense}
-                    payer={
-                      payerMap[expense.paid_by] ??
-                      resolvePayer(expense.paid_by, members)
-                    }
-                    onPress={() =>
-                      navigation.navigate("DetalheExpense", {
-                        groupId,
-                        expenseId: expense.id,
-                      })
-                    }
-                  />
-                ))
-              )}
-            </ScrollView>
+              </ScrollView>
+            ) : (
+              <ScrollView
+                className="flex-1 w-full"
+                contentContainerStyle={{
+                  flexGrow: expenses.length === 0 ? 1 : undefined,
+                  justifyContent: expenses.length === 0 ? "center" : undefined,
+                }}
+                refreshControl={refreshControl}
+                showsVerticalScrollIndicator
+              >
+                {expenses.length === 0 ? (
+                  <Text className="text-blackapp text-center font-bold py-8 px-4">
+                    Nenhuma despesa registrada.
+                  </Text>
+                ) : (
+                  expenses.map((expense) => (
+                    <ExpenseListItem
+                      key={expense.id}
+                      expense={expense}
+                      payer={
+                        payerMap[expense.paid_by] ??
+                        resolvePayer(expense.paid_by, members)
+                      }
+                      onPress={() =>
+                        navigation.navigate("DetalheExpense", {
+                          groupId,
+                          expenseId: expense.id,
+                        })
+                      }
+                    />
+                  ))
+                )}
+              </ScrollView>
+            )}
           </View>
         </View>
       </View>
@@ -498,6 +561,7 @@ export default function DetalheGrupo({ navigation, route }: Props) {
         visible={showAddExpense}
         onClose={() => setShowAddExpense(false)}
         groupId={groupId}
+        onSuccess={() => fetchGroupInfo("silent")}
       />
     </View>
   );

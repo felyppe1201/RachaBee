@@ -26,6 +26,10 @@ import { signOut } from "../../lib/authService";
 
 // Popups
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
+import JoinGroupForm from "../../components/popups/JoinGroupForm";
+
+// Temas
+import { themas } from "../../global/themes";
 
 // responsividade
 import {
@@ -38,9 +42,11 @@ import { moderateScale } from "react-native-size-matters";
 export default function Home() {
   const { profile, balance } = useUser();
   const [showPopupCreateGroup, setShowPopupCreateGroup] = useState(false);
+  const [showPopupJoinGroup, setShowPopupJoinGroup] = useState(false);
   console.log("balance", balance);
 
   const pressAnim = useRef(new Animated.Value(0)).current;
+  const joinPressAnim = useRef(new Animated.Value(0)).current;
 
   const onPressIn = () => {
     Animated.timing(pressAnim, {
@@ -62,7 +68,30 @@ export default function Home() {
 
   const bgColor = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#D90251", "#A3003C"], // hlpink -> hlpinkmd
+    outputRange: [themas.colors.hlpink, themas.colors.hlpinkmd],
+  });
+
+  const onJoinPressIn = () => {
+    Animated.timing(joinPressAnim, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const onJoinPressOut = () => {
+    Animated.timing(joinPressAnim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const joinBgColor = joinPressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [themas.colors.hlblue, themas.colors.hlbluemd],
   });
 
   return (
@@ -289,9 +318,44 @@ export default function Home() {
           {/* Zona Supeior FIM */}
           {/* Zona inferior */}
           <View
-            style={{ height: responsiveHeight(0) }}
-            className="w-full flex flex-row border-t-[10px] border-blackapp"
-          ></View>
+            style={{ height: responsiveHeight(30) }}
+            className="w-full flex flex-row items-center justify-center border-t-[10px] border-blackapp"
+          >
+            <Pressable
+              onPressIn={onJoinPressIn}
+              onPressOut={onJoinPressOut}
+              style={{ width: "100%" }}
+              onPress={() => {
+                setShowPopupJoinGroup(true);
+              }}
+            >
+              <Animated.View
+                style={{
+                  backgroundColor: joinBgColor,
+                  paddingVertical: 10,
+                  paddingHorizontal: 40,
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                }}
+                className="border-b-[10px] border-blackapp relative"
+              >
+                <Text
+                  style={{
+                    fontSize: moderateScale(30),
+                    height: responsiveHeight(10),
+                    textAlign: "center",
+                    textAlignVertical: "center",
+                    color: "#fff",
+                    fontWeight: "700",
+                  }}
+                >
+                  ACEITAR CONVITE
+                </Text>
+              </Animated.View>
+            </Pressable>
+          </View>
           {/* Zona inferior FIM */}
         </View>
         {/* FIM CONTEÚDO */}
@@ -299,6 +363,10 @@ export default function Home() {
       <CreateGroupForm
         visible={showPopupCreateGroup}
         onClose={() => setShowPopupCreateGroup(false)}
+      />
+      <JoinGroupForm
+        visible={showPopupJoinGroup}
+        onClose={() => setShowPopupJoinGroup(false)}
       />
     </>
   );

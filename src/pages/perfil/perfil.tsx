@@ -270,7 +270,7 @@ export default function Perfil({ navigation }: Props) {
         className="border-t px-4 py-3"
         style={{
           borderColor: themas.colors.mdprimary,
-          height: responsiveHeight(45),
+          height: responsiveHeight(30),
         }}
       >
         {menuItems.map((item) => (

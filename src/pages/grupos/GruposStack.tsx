@@ -16,7 +16,12 @@ import type { GroupMemberInfo } from "../../lib/GroupService";
 export type GruposStackParamList = {
   GruposMain: undefined;
   DetalheGrupo: { groupId: string };
-  MembrosGrupo: { groupId: string; members: GroupMemberInfo[]; createdBy: string };
+  MembrosGrupo: {
+    groupId: string;
+    groupName: string;
+    members: GroupMemberInfo[];
+    createdBy: string;
+  };
   DetalheExpense: { groupId: string; expenseId: string };
   ConvidarGrupo: { groupId: string };
   EntrarGrupo: { inviteCode?: string };
