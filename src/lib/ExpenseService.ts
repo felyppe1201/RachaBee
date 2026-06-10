@@ -2,7 +2,7 @@
 import { supabase } from "./supabase";
 
 // Cache
-import { setCached } from "./cacheService";
+import { getCached, removeCached, setCached, syncCache } from "./cacheService";
 
 // Balance
 import {
@@ -24,12 +24,6 @@ export type CreateExpenseResult = {
   receiptUploadFailed?: boolean;
 };
 
-export type CreatePaymentResult = {
-  success: boolean;
-  payment_id: string;
-  amount: number;
-};
-
 export type CreateExpenseInput = {
   groupId: string;
   description: string;
@@ -46,13 +40,37 @@ export type CreatePaymentInput = {
   transferReceiptUri?: string | null;
 };
 
-// Área Cache | Chaves de split sincronizadas após criação
+export type CreatePaymentResult = {
+  success: boolean;
+  payment_id: string;
+  amount: number;
+  receiptUploadFailed?: boolean;
+};
+
+export type ExpensePayment = {
+  id: string;
+  paid_by: string;
+  amount: number;
+  description: string;
+  transfer_receipt_url: string | null;
+  created_at: string;
+  payer_name: string;
+  payer_avatar_url: string | null;
+};
+
+// Área Cache | Chaves de split e pagamentos sincronizadas após mutações
 
 const CACHE_KEY_EXPENSE_SPLIT_PREFIX = "@cache:balance:expense:";
+const CACHE_KEY_EXPENSE_PAYMENTS_PREFIX = "@cache:expense:payments:";
 
 // expenseSplitCacheKey | Gera chave de cache para split de uma despesa
 function expenseSplitCacheKey(expenseId: string): string {
   return `${CACHE_KEY_EXPENSE_SPLIT_PREFIX}${expenseId}`;
+}
+
+// expensePaymentsCacheKey | Gera chave de cache para pagamentos de uma despesa
+function expensePaymentsCacheKey(expenseId: string): string {
+  return `${CACHE_KEY_EXPENSE_PAYMENTS_PREFIX}${expenseId}`;
 }
 
 // Área Erros | Tratamento centralizado de falhas do serviço
@@ -60,9 +78,9 @@ function expenseSplitCacheKey(expenseId: string): string {
 type ExpenseServiceContext =
   | "createExpense"
   | "createPayment"
+  | "getExpensePayments"
   | "uploadExpenseReceipt"
-  | "uploadTransferReceipt"
-  | "deleteExpense";
+  | "uploadTransferReceipt";
 
 const KNOWN_USER_MESSAGES = [
   "usuário não autenticado",
@@ -98,14 +116,14 @@ function extractErrorCode(error: unknown): string | undefined {
 // logExpenseServiceError | Registra erro bruto no terminal para debug
 function logExpenseServiceError(
   context: ExpenseServiceContext,
-  error: unknown
+  error: unknown,
 ): void {
   const message = extractErrorMessage(error);
   const code = extractErrorCode(error);
 
   console.error(`[ExpenseService:${context}]`, error);
   console.error(
-    `[ExpenseService:${context}] code=${code ?? "n/a"} message=${message}`
+    `[ExpenseService:${context}] code=${code ?? "n/a"} message=${message}`,
   );
 }
 
@@ -172,7 +190,7 @@ function resolveUserMessage(error: unknown): string {
 // throwExpenseServiceError | Loga e propaga erro com mensagem para o usuário
 function throwExpenseServiceError(
   context: ExpenseServiceContext,
-  error: unknown
+  error: unknown,
 ): never {
   logExpenseServiceError(context, error);
   throw new Error(resolveUserMessage(error));
@@ -182,7 +200,7 @@ function throwExpenseServiceError(
 function assertRpcSuccess(
   context: ExpenseServiceContext,
   data: { success: boolean } | null,
-  error: unknown
+  error: unknown,
 ): void {
   if (error) throwExpenseServiceError(context, error);
   if (!data?.success) {
@@ -198,7 +216,7 @@ const RECEIPTS_BUCKET = "receipts";
 async function uploadReceiptImage(
   context: ExpenseServiceContext,
   localUri: string,
-  fileName: string
+  fileName: string,
 ): Promise<string | null> {
   try {
     const response = await fetch(localUri);
@@ -232,24 +250,24 @@ async function uploadReceiptImage(
 // uploadExpenseReceipt | Envia comprovante da despesa e retorna URL pública
 export async function uploadExpenseReceipt(
   expenseId: string,
-  localUri: string
+  localUri: string,
 ): Promise<string | null> {
   return uploadReceiptImage(
     "uploadExpenseReceipt",
     localUri,
-    `expenses/${expenseId}.jpg`
+    `expenses/${expenseId}.jpg`,
   );
 }
 
 // uploadTransferReceipt | Envia comprovante da transferência e retorna URL pública
 export async function uploadTransferReceipt(
   paymentId: string,
-  localUri: string
+  localUri: string,
 ): Promise<string | null> {
   return uploadReceiptImage(
     "uploadTransferReceipt",
     localUri,
-    `payments/${paymentId}.jpg`
+    `payments/${paymentId}.jpg`,
   );
 }
 
@@ -258,13 +276,14 @@ export async function uploadTransferReceipt(
 // invalidateExpenseRelatedCaches | Remove caches afetados por mutações de despesa
 async function invalidateExpenseRelatedCaches(
   groupId: string,
-  expenseId?: string
+  expenseId?: string,
 ): Promise<void> {
   await invalidateGroupInfoCache(groupId);
   await invalidateAllBalanceCaches();
 
   if (expenseId) {
     await invalidateExpenseSplitCache(expenseId);
+    await invalidateExpensePaymentsCache(expenseId);
   }
 }
 
@@ -273,7 +292,7 @@ async function syncExpenseSplitCache(
   expenseId: string,
   amount: number,
   totalMembers: number,
-  valPorParticipante: number
+  valPorParticipante: number,
 ): Promise<void> {
   const fresh: ExpenseSplit = {
     expense_id: expenseId,
@@ -299,7 +318,7 @@ function generatePendingReceiptId(): string {
 // resolveReceiptUrl | Envia comprovante local e retorna URL pública
 async function resolveReceiptUrl(
   receiptUrl?: string | null,
-  receiptUri?: string | null
+  receiptUri?: string | null,
 ): Promise<{ receiptUrl?: string; receiptUploadFailed: boolean }> {
   if (receiptUrl) {
     return { receiptUrl, receiptUploadFailed: false };
@@ -311,7 +330,7 @@ async function resolveReceiptUrl(
 
   const uploadedUrl = await uploadExpenseReceipt(
     generatePendingReceiptId(),
-    receiptUri
+    receiptUri,
   );
 
   if (!uploadedUrl) {
@@ -323,7 +342,7 @@ async function resolveReceiptUrl(
 
 // createExpense | Registra nova despesa no grupo via RPC
 export async function createExpense(
-  input: CreateExpenseInput
+  input: CreateExpenseInput,
 ): Promise<CreateExpenseResult> {
   const { groupId, description, amount, receiptUrl, receiptUri } = input;
   const { receiptUrl: resolvedReceiptUrl, receiptUploadFailed } =
@@ -347,7 +366,7 @@ export async function createExpense(
     result.expense_id,
     amount,
     result.total_members,
-    result.val_por_participante
+    result.val_por_participante,
   );
   await invalidateGroupInfoCache(groupId);
   await invalidateAllBalanceCaches();
@@ -360,27 +379,49 @@ export async function createExpense(
 
 // Área Pagamentos | CreatePayment
 
+// resolveTransferReceiptUrl | Envia comprovante local e retorna URL pública
+async function resolveTransferReceiptUrl(
+  transferReceiptUrl?: string | null,
+  transferReceiptUri?: string | null,
+): Promise<{ transferReceiptUrl?: string; receiptUploadFailed: boolean }> {
+  if (transferReceiptUrl) {
+    return { transferReceiptUrl, receiptUploadFailed: false };
+  }
+
+  if (!transferReceiptUri) {
+    return { receiptUploadFailed: false };
+  }
+
+  const uploadedUrl = await uploadTransferReceipt(
+    generatePendingReceiptId(),
+    transferReceiptUri,
+  );
+
+  if (!uploadedUrl) {
+    return { receiptUploadFailed: true };
+  }
+
+  return { transferReceiptUrl: uploadedUrl, receiptUploadFailed: false };
+}
+
 // createPayment | Registra pagamento de uma despesa via RPC
 export async function createPayment(
-  input: CreatePaymentInput
+  input: CreatePaymentInput,
 ): Promise<CreatePaymentResult> {
-  const { expenseId, groupId, description, transferReceiptUrl, transferReceiptUri } = input;
-
-  let resolvedUrl: string | undefined = transferReceiptUrl ?? undefined;
-
-  if (!resolvedUrl && transferReceiptUri) {
-    const tempId = generatePendingReceiptId();
-    const uploaded = await uploadTransferReceipt(tempId, transferReceiptUri);
-    if (!uploaded) {
-      throw new Error("Não foi possível enviar o comprovante. Tente novamente.");
-    }
-    resolvedUrl = uploaded;
-  }
+  const {
+    expenseId,
+    groupId,
+    description,
+    transferReceiptUrl,
+    transferReceiptUri,
+  } = input;
+  const { transferReceiptUrl: resolvedReceiptUrl, receiptUploadFailed } =
+    await resolveTransferReceiptUrl(transferReceiptUrl, transferReceiptUri);
 
   const { data, error } = await supabase.rpc("CreatePayment", {
     expense_id: expenseId,
     description,
-    transfer_receipt_url: resolvedUrl ?? null,
+    transfer_receipt_url: resolvedReceiptUrl,
   });
 
   assertRpcSuccess("createPayment", data, error);
@@ -390,18 +431,72 @@ export async function createPayment(
 
   await invalidateExpenseRelatedCaches(groupId, expenseId);
 
-  return data as CreatePaymentResult;
+  return {
+    ...(data as CreatePaymentResult),
+    receiptUploadFailed: receiptUploadFailed || undefined,
+  };
 }
 
-// deleteExpense | Encerra despesa paga pelo criador via RPC
-export async function deleteExpense(
+// Área Pagamentos | GetPaymentsByExpenseUUID com cache
+
+// sortExpensePaymentsByDate | Ordena pagamentos por data de registro ascendente
+function sortExpensePaymentsByDate(
+  payments: ExpensePayment[],
+): ExpensePayment[] {
+  return [...payments].sort(
+    (left, right) =>
+      new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
+  );
+}
+
+// fetchExpensePayments | Chama RPC GetPaymentsByExpenseUUID
+async function fetchExpensePayments(
   expenseId: string,
-  groupId: string
-): Promise<void> {
-  const { data, error } = await supabase.rpc("DeleteExpense", {
+): Promise<ExpensePayment[]> {
+  const { data, error } = await supabase.rpc("GetPaymentsByExpenseUUID", {
     expense_id: expenseId,
   });
 
-  assertRpcSuccess("deleteExpense", data, error);
-  await invalidateExpenseRelatedCaches(groupId, expenseId);
+  if (error) throwExpenseServiceError("getExpensePayments", error);
+
+  return sortExpensePaymentsByDate((data ?? []) as ExpensePayment[]);
+}
+
+// calculateExpensePayments | Consulta RPC e sincroniza cache se diferente
+export async function calculateExpensePayments(
+  expenseId: string,
+): Promise<ExpensePayment[]> {
+  const fresh = await fetchExpensePayments(expenseId);
+  return syncCache(expensePaymentsCacheKey(expenseId), fresh);
+}
+
+// peekExpensePayments | Retorna cache de pagamentos sem consultar RPC
+export async function peekExpensePayments(
+  expenseId: string,
+): Promise<ExpensePayment[] | null> {
+  return getCached<ExpensePayment[]>(expensePaymentsCacheKey(expenseId));
+}
+
+// getExpensePayments | Retorna cache imediato; se ausente, calcula via RPC
+export async function getExpensePayments(
+  expenseId: string,
+): Promise<ExpensePayment[]> {
+  const cached = await peekExpensePayments(expenseId);
+  if (cached) return cached;
+  return calculateExpensePayments(expenseId);
+}
+
+// invalidateExpensePaymentsCache | Remove cache de pagamentos de uma despesa
+export async function invalidateExpensePaymentsCache(
+  expenseId: string,
+): Promise<void> {
+  await removeCached(expensePaymentsCacheKey(expenseId));
+}
+
+// resolveExpensePayment | Localiza pagamento no cache da despesa
+export function resolveExpensePayment(
+  payments: ExpensePayment[] | null,
+  paymentId: string,
+): ExpensePayment | null {
+  return payments?.find((payment) => payment.id === paymentId) ?? null;
 }

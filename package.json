@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start --metro-config metro.config.cjs",
-    "android": "expo start --android --metro-config metro.config.cjs",
-    "ios": "expo start --ios --metro-config metro.config.cjs",
-    "web": "expo start --web --metro-config metro.config.cjs",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
     "test": "jest"
   },
   "jest": {

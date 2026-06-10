@@ -59,6 +59,7 @@ type AnimatedMenuItemProps = {
 function AnimatedMenuItem({ item }: AnimatedMenuItemProps) {
   const pressAnim = useRef(new Animated.Value(0)).current;
 
+  // onPressIn | Anima item do menu para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -68,6 +69,7 @@ function AnimatedMenuItem({ item }: AnimatedMenuItemProps) {
     }).start();
   };
 
+  // onPressOut | Restaura cor do item do menu
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -125,10 +127,12 @@ function formatMemberSince(dateStr: string): string {
   return `Hey! Estamos juntos desde ${formatted}, sabia?`;
 }
 
+// Perfil | Tela de perfil com dados do usuário e menu de opções
 export default function Perfil({ navigation }: Props) {
   const { profile } = useUser();
   const insets = useSafeAreaInsets();
 
+  // handleLogout | Encerra sessão autenticada
   const handleLogout = useCallback(async () => {
     try {
       await signOut();
@@ -176,6 +180,7 @@ export default function Perfil({ navigation }: Props) {
       }}
     >
       <View className="flex-1 items-center justify-start px-6 flex flex-col gap-12">
+        {/* INICIO HEADER */}
         <View
           style={{
             height: responsiveHeight(17),
@@ -264,8 +269,10 @@ export default function Perfil({ navigation }: Props) {
             {formatMemberSince(profile.created_at)}
           </Text>
         ) : null}
+        {/* FIM HEADER */}
       </View>
 
+      {/* INICIO MENU */}
       <View
         className="border-t px-4 py-3"
         style={{
@@ -277,6 +284,7 @@ export default function Perfil({ navigation }: Props) {
           <AnimatedMenuItem key={item.label} item={item} />
         ))}
       </View>
+      {/* FIM MENU */}
     </View>
   );
 }

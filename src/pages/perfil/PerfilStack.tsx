@@ -11,6 +11,8 @@ import PoliticaPrivacidade from "./sons/PoliticaPrivacidade";
 import Sobre from "./sons/Sobre";
 import Ajuda from "./sons/Ajuda";
 
+// Área Tipos | Rotas do stack de perfil
+
 export type PerfilStackParamList = {
   PerfilMain: undefined;
   TermosDeUso: undefined;

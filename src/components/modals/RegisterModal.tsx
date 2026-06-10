@@ -1,4 +1,7 @@
+// React
 import React, { useState } from "react";
+
+// React Native
 import {
   Alert,
   Image,
@@ -8,18 +11,27 @@ import {
   View,
   ScrollView,
 } from "react-native";
+
+// Expo
 import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
+
+// Supabase
 import { supabase } from "../../lib/supabase";
-import { themas } from "../../global/themes";
+
+// Interface
 import { Input } from "../interface/Input";
 import { Button } from "../interface/Button";
+
+// Temas
+import { themas } from "../../global/themes";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
 
+// RegisterModal | Modal de cadastro com avatar e validação de senha
 export function RegisterModal({ visible, onClose }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,6 +42,7 @@ export function RegisterModal({ visible, onClose }: Props) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // handlePickImage | Abre galeria e seleciona foto de perfil
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -49,6 +62,7 @@ export function RegisterModal({ visible, onClose }: Props) {
     }
   };
 
+  // uploadAvatar | Envia avatar para o bucket e retorna URL pública
   const uploadAvatar = async (userId: string): Promise<string | null> => {
     if (!avatarUri) return null;
 
@@ -79,6 +93,7 @@ export function RegisterModal({ visible, onClose }: Props) {
     }
   };
 
+  // handleRegister | Valida campos e cria conta no Supabase Auth
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Alert.alert("Atenção", "Preencha todos os campos.");
@@ -122,10 +137,11 @@ export function RegisterModal({ visible, onClose }: Props) {
     Alert.alert(
       "Cadastro realizado!",
       "Enviamos um e-mail de confirmação. Confirme para acessar o app.",
-      [{ text: "OK", onPress: handleClose }]
+      [{ text: "OK", onPress: handleClose }],
     );
   };
 
+  // handleClose | Limpa formulário e fecha o modal
   const handleClose = () => {
     setName("");
     setEmail("");
@@ -139,30 +155,52 @@ export function RegisterModal({ visible, onClose }: Props) {
     <Modal visible={visible} animationType="slide" transparent>
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-white rounded-t-3xl px-6 pt-6 pb-10">
+          {/* INICIO CABEÇALHO */}
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-xl font-bold">Criar conta</Text>
             <TouchableOpacity onPress={handleClose}>
-              <MaterialIcons name="close" size={24} color={themas.colors.gray} />
+              <MaterialIcons
+                name="close"
+                size={24}
+                color={themas.colors.gray}
+              />
             </TouchableOpacity>
           </View>
+          {/* FIM CABEÇALHO */}
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            <TouchableOpacity className="self-center mb-4" onPress={handlePickImage}>
+            {/* INICIO AVATAR */}
+            <TouchableOpacity
+              className="self-center mb-4"
+              onPress={handlePickImage}
+            >
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} className="w-24 h-24 rounded-full" />
+                <Image
+                  source={{ uri: avatarUri }}
+                  className="w-24 h-24 rounded-full"
+                />
               ) : (
                 <View
                   className="w-24 h-24 rounded-full items-center justify-center"
                   style={{ backgroundColor: themas.colors.lightGray }}
                 >
-                  <MaterialIcons name="add-a-photo" size={32} color={themas.colors.gray} />
+                  <MaterialIcons
+                    name="add-a-photo"
+                    size={32}
+                    color={themas.colors.gray}
+                  />
                 </View>
               )}
-              <Text className="text-center text-xs mt-1" style={{ color: themas.colors.gray }}>
+              <Text
+                className="text-center text-xs mt-1"
+                style={{ color: themas.colors.gray }}
+              >
                 Foto de perfil
               </Text>
             </TouchableOpacity>
+            {/* FIM AVATAR */}
 
+            {/* INICIO CAMPOS */}
             <Input
               value={name}
               onChangeText={setName}
@@ -195,12 +233,21 @@ export function RegisterModal({ visible, onClose }: Props) {
               IconRight={Octicons}
               iconRightName={showConfirmPassword ? "eye-closed" : "eye"}
               secureTextEntry={showConfirmPassword}
-              onIconRightPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              onIconRightPress={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
             />
+            {/* FIM CAMPOS */}
 
+            {/* INICIO AÇÃO */}
             <View className="items-center mt-6">
-              <Button text="Criar conta" loading={loading} onPress={handleRegister} />
+              <Button
+                text="Criar conta"
+                loading={loading}
+                onPress={handleRegister}
+              />
             </View>
+            {/* FIM AÇÃO */}
           </ScrollView>
         </View>
       </View>

@@ -9,6 +9,7 @@ import { PerfilStackParamList } from "../PerfilStack";
 
 type Props = NativeStackScreenProps<PerfilStackParamList, "Ajuda">;
 
+// Ajuda | Tela placeholder de ajuda
 export default function Ajuda({ navigation }: Props) {
   return <StackPlaceholderScreen title="Ajuda" navigation={navigation} />;
 }

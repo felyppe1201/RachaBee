@@ -28,7 +28,7 @@ import {
 } from "react-native-responsive-dimensions";
 
 // Stack
-import { AtividadeStackParamList } from "../AtividadeStack";
+import { GruposStackParamList } from "../GruposStack";
 
 // Temas
 import { themas } from "../../../global/themes";
@@ -36,21 +36,19 @@ import { themas } from "../../../global/themes";
 // Cache
 import { areCacheEqual } from "../../../lib/cacheService";
 
-// ActivityService
+// ExpenseService
 import {
-  calculateActivityFeed,
-  peekActivityFeed,
-  resolveActivityExpense,
-  resolveActivityPayment,
-  type ActivityFeed,
-} from "../../../lib/ActivityService";
+  calculateExpensePayments,
+  peekExpensePayments,
+  resolveExpensePayment,
+  type ExpensePayment,
+} from "../../../lib/ExpenseService";
 
-// GroupService
-import { peekGroupsList } from "../../../lib/GroupService";
+type Props = NativeStackScreenProps<GruposStackParamList, "DetalhePayment">;
 
-type Props = NativeStackScreenProps<AtividadeStackParamList, "DetalheAtividade">;
+type LoadMode = "initial" | "silent";
 
-type LoadMode = "initial" | "silent" | "pull";
+const CONTENT_HORIZONTAL_PADDING = responsiveWidth(6);
 
 type AnimatedActionButtonProps = {
   baseColor: string;
@@ -71,8 +69,8 @@ function formatCurrency(value: number): string {
   });
 }
 
-// formatActivityDate | Formata data para leitura no detalhe
-function formatActivityDate(iso: string): string {
+// formatPaymentDate | Formata data do pagamento
+function formatPaymentDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
@@ -127,11 +125,7 @@ function AnimatedActionButton({
       style={{ height, width }}
     >
       <Animated.View
-        style={{
-          backgroundColor: bgColor,
-          height,
-          width,
-        }}
+        style={{ backgroundColor: bgColor, height, width }}
         className={`flex flex-row items-center justify-center relative ${borderClassName}`}
       >
         {children}
@@ -140,19 +134,86 @@ function AnimatedActionButton({
   );
 }
 
-type ActivityDetailFieldProps = {
-  label: string;
-  value: string;
-};
+type PaymentDetailFieldProps = { label: string; value: string };
 
-// ActivityDetailField | Rótulo e valor de um campo da atividade
-function ActivityDetailField({ label, value }: ActivityDetailFieldProps) {
+// PaymentDetailField | Rótulo e valor de um campo do pagamento
+function PaymentDetailField({ label, value }: PaymentDetailFieldProps) {
   return (
     <View className="w-full gap-1">
       <Text className="text-sm text-blackapp font-bold">{label}</Text>
       <Text className="text-base text-blackapp font-medium border-[3px] border-blackapp p-2">
         {value}
       </Text>
+    </View>
+  );
+}
+
+type PaymentOwnerCardProps = {
+  name: string;
+  avatarUrl: string | null;
+  createdAt: string;
+};
+
+// PaymentOwnerCard | Card de quem registrou o pagamento
+function PaymentOwnerCard({ name, avatarUrl, createdAt }: PaymentOwnerCardProps) {
+  const avatarSize = responsiveWidth(16);
+
+  return (
+    <View className="w-full flex-row items-center gap-3 border-[3px] border-blackapp p-3">
+      {avatarUrl ? (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={{ width: avatarSize, height: avatarSize }}
+          className="rounded-full bg-zinc-200 shrink-0"
+        />
+      ) : (
+        <View
+          style={{ width: avatarSize, height: avatarSize }}
+          className="rounded-full bg-zinc-300 items-center justify-center shrink-0"
+        >
+          <Text className="text-blackapp font-bold text-lg">
+            {name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
+
+      <View className="flex-1 shrink">
+        <Text className="text-xs text-blackapp/70 font-bold">Pago por</Text>
+        <Text className="text-lg text-blackapp font-bold" numberOfLines={2}>
+          {name}
+        </Text>
+        <Text className="text-sm text-hlblue mt-0.5" numberOfLines={1}>
+          {formatPaymentDate(createdAt)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+type PaymentDescriptionFieldProps = {
+  description: string;
+  receiptUrl: string | null;
+  onReceiptPress: () => void;
+};
+
+// PaymentDescriptionField | Descrição com thumbnail opcional do comprovante
+function PaymentDescriptionField({
+  description,
+  receiptUrl,
+  onReceiptPress,
+}: PaymentDescriptionFieldProps) {
+  return (
+    <View className="w-full gap-1">
+      <Text className="text-sm text-blackapp font-bold">Descrição</Text>
+      <View className="border-[3px] border-blackapp p-2 gap-3">
+        <Text className="text-base text-blackapp font-medium">{description}</Text>
+        {receiptUrl ? (
+          <ReceiptThumbnail
+            receiptUrl={receiptUrl}
+            onPress={onReceiptPress}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -183,55 +244,23 @@ function ReceiptThumbnail({ receiptUrl, onPress }: ReceiptThumbnailProps) {
   );
 }
 
-// DetalheAtividade | Detalhes da atividade a partir do cache do feed
-export default function DetalheAtividade({ navigation, route }: Props) {
-  const { activityId, activityType } = route.params;
-  const [activityFeed, setActivityFeed] = useState<ActivityFeed | null>(null);
-  const [groupName, setGroupName] = useState("Grupo");
+// DetalhePayment | Detalhes de um pagamento da despesa
+export default function DetalhePayment({ navigation, route }: Props) {
+  const { expenseId, paymentId } = route.params;
+  const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFullscreenReceipt, setShowFullscreenReceipt] = useState(false);
   const hasVisited = useRef(false);
 
-  const expense =
-    activityType === "expense"
-      ? resolveActivityExpense(activityFeed, activityId)
-      : null;
+  const payment = resolveExpensePayment(expensePayments, paymentId);
 
-  const payment =
-    activityType === "payment"
-      ? resolveActivityPayment(activityFeed, activityId)
-      : null;
-
-  const receiptUrl =
-    expense?.receipt_url ?? payment?.transfer_receipt_url ?? null;
-
-  const headerTitle = expense ? "Despesa" : payment ? "Pagamento" : "Atividade";
-
-  // resolveGroupName | Obtém nome do grupo pelo id
-  const resolveGroupName = useCallback(async (groupId: string | undefined) => {
-    if (!groupId) {
-      setGroupName("Grupo");
-      return;
-    }
-
-    const groups = await peekGroupsList();
-    const match = groups?.find((group) => group.id === groupId);
-    setGroupName(match?.name ?? "Grupo");
-  }, []);
-
-  // fetchActivityFeed | Exibe cache imediato e sincroniza via calculateActivityFeed
-  const fetchActivityFeed = useCallback(
+  // fetchExpensePayments | Exibe cache imediato e sincroniza via calculateExpensePayments
+  const fetchExpensePayments = useCallback(
     async (mode: LoadMode = "initial") => {
-      const cached = await peekActivityFeed();
-
       if (mode === "initial") {
+        const cached = await peekExpensePayments(expenseId);
         if (cached) {
-          setActivityFeed(cached);
-          const cachedItem =
-            activityType === "expense"
-              ? resolveActivityExpense(cached, activityId)
-              : resolveActivityPayment(cached, activityId);
-          await resolveGroupName(cachedItem?.group_id);
+          setExpensePayments(cached);
           setLoading(false);
         } else {
           setLoading(true);
@@ -239,28 +268,25 @@ export default function DetalheAtividade({ navigation, route }: Props) {
       }
 
       try {
-        const fresh = await calculateActivityFeed();
-        setActivityFeed((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
-        const freshItem =
-          activityType === "expense"
-            ? resolveActivityExpense(fresh, activityId)
-            : resolveActivityPayment(fresh, activityId);
-        await resolveGroupName(freshItem?.group_id);
+        const fresh = await calculateExpensePayments(expenseId);
+        setExpensePayments((prev) => (areCacheEqual(prev, fresh) ? prev : fresh));
+      } catch {
+        if (mode === "initial" && !(await peekExpensePayments(expenseId))) {
+          setExpensePayments([]);
+        }
       } finally {
         setLoading(false);
       }
     },
-    [activityId, activityType, resolveGroupName]
+    [expenseId],
   );
 
   useFocusEffect(
     useCallback(() => {
-      fetchActivityFeed(hasVisited.current ? "silent" : "initial");
+      fetchExpensePayments(hasVisited.current ? "silent" : "initial");
       hasVisited.current = true;
-    }, [fetchActivityFeed])
+    }, [fetchExpensePayments]),
   );
-
-  const hasActivity = Boolean(expense ?? payment);
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
@@ -273,24 +299,25 @@ export default function DetalheAtividade({ navigation, route }: Props) {
       />
       {/* FIM ESPAÇAMENTO SUPERIOR */}
       {/* INICIO CONTEÚDO */}
-      <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
-        <View
-          style={{ width: responsiveWidth(100) }}
-          className="h-full flex flex-col items-center justify-start border-b-[8px] border-blackapp"
-        >
+      <View className="flex-1 w-full border-t-[8px] border-blackapp">
+        <View className="h-full w-full flex flex-col items-stretch justify-start border-b-[8px] border-blackapp">
           {/* INICIO CABEÇALHO */}
           <View
-            style={{ width: responsiveWidth(100) }}
-            className="border-b-[8px] border-blackapp flex items-end justify-center px-6 py-4"
+            style={{ paddingHorizontal: CONTENT_HORIZONTAL_PADDING }}
+            className="w-full border-b-[8px] border-blackapp flex items-end justify-center relative"
           >
-            {loading && !hasActivity ? (
-              <ActivityIndicator size="small" color={themas.colors.hlpink} />
+            {loading && !payment ? (
+              <ActivityIndicator
+                size="small"
+                color={themas.colors.hlpink}
+                style={{ paddingVertical: responsiveHeight(2) }}
+              />
             ) : (
               <Text
-                className="font-bold text-2xl text-center"
+                className="font-bold text-2xl text-center pt-4 pb-4"
                 numberOfLines={2}
               >
-                {headerTitle}
+                {payment?.description ?? "Pagamento"}
               </Text>
             )}
           </View>
@@ -298,85 +325,49 @@ export default function DetalheAtividade({ navigation, route }: Props) {
 
           {/* INICIO DETALHES */}
           <ScrollView
-            className="flex-1 w-full"
+            style={{ flex: 1, width: "100%" }}
             contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingVertical: 20,
-              gap: 16,
+              paddingHorizontal: CONTENT_HORIZONTAL_PADDING,
+              paddingVertical: responsiveHeight(2.5),
+              gap: responsiveHeight(2),
               flexGrow: 1,
+              width: "100%",
+              alignItems: "stretch",
             }}
             showsVerticalScrollIndicator
           >
-            {loading && !hasActivity ? (
-              <View className="flex-1 items-center justify-center py-8">
+            {loading && !payment ? (
+              <View
+                style={{ minHeight: responsiveHeight(30) }}
+                className="flex-1 items-center justify-center"
+              >
                 <ActivityIndicator
                   size="large"
                   color={themas.colors.primary}
                 />
               </View>
-            ) : !hasActivity ? (
+            ) : !payment ? (
               <Text className="text-blackapp text-center font-bold px-4 py-8">
-                Atividade não encontrada.
+                Pagamento não encontrado.
               </Text>
-            ) : expense ? (
+            ) : (
               <>
-                <ActivityDetailField
-                  label="Valor"
-                  value={formatCurrency(expense.amount)}
+                <PaymentOwnerCard
+                  name={payment.payer_name}
+                  avatarUrl={payment.payer_avatar_url}
+                  createdAt={payment.created_at}
                 />
-                <ActivityDetailField
-                  label="Data"
-                  value={formatActivityDate(expense.created_at)}
-                />
-                <ActivityDetailField label="Grupo" value={groupName} />
-                <ActivityDetailField
-                  label="Descrição"
-                  value={expense.description}
-                />
-                <ActivityDetailField
-                  label="Pagamentos"
-                  value={`Feitos: ${expense.payments_feitos} · Faltantes: ${expense.payments_faltantes}`}
-                />
-                {expense.receipt_url ? (
-                  <View className="w-full gap-1">
-                    <Text className="text-sm text-blackapp font-bold">
-                      Imagem
-                    </Text>
-                    <ReceiptThumbnail
-                      receiptUrl={expense.receipt_url}
-                      onPress={() => setShowFullscreenReceipt(true)}
-                    />
-                  </View>
-                ) : null}
-              </>
-            ) : payment ? (
-              <>
-                <ActivityDetailField
+                <PaymentDetailField
                   label="Valor"
                   value={formatCurrency(payment.amount)}
                 />
-                <ActivityDetailField
-                  label="Data"
-                  value={formatActivityDate(payment.created_at)}
+                <PaymentDescriptionField
+                  description={payment.description}
+                  receiptUrl={payment.transfer_receipt_url}
+                  onReceiptPress={() => setShowFullscreenReceipt(true)}
                 />
-                <ActivityDetailField label="Grupo" value={groupName} />
-                <ActivityDetailField
-                  label="Descrição"
-                  value={payment.description}
-                />
-                {payment.transfer_receipt_url ? (
-                  <View className="w-full gap-1">
-                    <Text className="text-sm text-blackapp font-bold">
-                      Imagem
-                    </Text>
-                    <ReceiptThumbnail
-                      receiptUrl={payment.transfer_receipt_url}
-                      onPress={() => setShowFullscreenReceipt(true)}
-                    />
-                  </View>
-                ) : null}
               </>
-            ) : null}
+            )}
           </ScrollView>
           {/* FIM DETALHES */}
         </View>
@@ -405,7 +396,7 @@ export default function DetalheAtividade({ navigation, route }: Props) {
       {/* FIM RODAPÉ */}
 
       {/* INICIO MODAL COMPROVANTE */}
-      {receiptUrl ? (
+      {payment?.transfer_receipt_url ? (
         <Modal
           visible={showFullscreenReceipt}
           transparent
@@ -423,7 +414,7 @@ export default function DetalheAtividade({ navigation, route }: Props) {
               <X size={28} color="#fff" />
             </Pressable>
             <Image
-              source={{ uri: receiptUrl }}
+              source={{ uri: payment.transfer_receipt_url }}
               style={{
                 width: responsiveWidth(92),
                 height: responsiveHeight(70),
