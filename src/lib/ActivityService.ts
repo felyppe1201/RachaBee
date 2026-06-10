@@ -36,12 +36,16 @@ export type ActivityFeed = {
   payments: ActivityPayment[];
 };
 
+export type GroupNameMap = Record<string, string>;
+
 export type ActivityListItem = {
   id: string;
   type: ActivityType;
   amount: number;
   description: string;
   created_at: string;
+  group_id: string;
+  group_name: string;
 };
 
 // Área Cache | Chaves e sincronização do feed de atividades
@@ -148,14 +152,24 @@ function throwActivityServiceError(
 
 // Área Lista | Montagem e resolução de itens do feed
 
+// resolveGroupName | Obtém nome do grupo pelo mapa de cache
+function resolveGroupName(groupId: string, groupNames: GroupNameMap): string {
+  return groupNames[groupId] ?? "Grupo";
+}
+
 // buildActivityList | Une despesas e pagamentos ordenados por data decrescente
-export function buildActivityList(feed: ActivityFeed): ActivityListItem[] {
+export function buildActivityList(
+  feed: ActivityFeed,
+  groupNames: GroupNameMap = {}
+): ActivityListItem[] {
   const expenses: ActivityListItem[] = feed.expenses.map((item) => ({
     id: item.id,
     type: "expense",
     amount: item.amount,
     description: item.description,
     created_at: item.created_at,
+    group_id: item.group_id,
+    group_name: resolveGroupName(item.group_id, groupNames),
   }));
 
   const payments: ActivityListItem[] = feed.payments.map((item) => ({
@@ -164,6 +178,8 @@ export function buildActivityList(feed: ActivityFeed): ActivityListItem[] {
     amount: item.amount,
     description: item.description,
     created_at: item.created_at,
+    group_id: item.group_id,
+    group_name: resolveGroupName(item.group_id, groupNames),
   }));
 
   return [...expenses, ...payments].sort(

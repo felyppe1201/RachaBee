@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 
 // React Navigation
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 
 // IMG's
 import Logo from "../../assets/logo.png";
@@ -25,14 +25,9 @@ import Octagon from "../../components/interface/Octagon";
 // Context
 import { useUser } from "../../context/UserContext";
 
-// authService
-import { signOut } from "../../lib/authService";
-
 // Popups
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
-
-// Balance
-import { peekBalance } from "../../lib/BalanceService";
+import JoinGroupForm from "../../components/popups/JoinGroupForm";
 
 // Temas
 import { themas } from "../../global/themes";
@@ -47,10 +42,11 @@ import { moderateScale } from "react-native-size-matters";
 
 type LoadMode = "initial" | "silent" | "pull";
 
+// Home | Tela inicial com saldo, criar grupo e aceitar convite
 export default function Home() {
-  const navigation = useNavigation<any>();
   const { profile, balance, refreshBalance } = useUser();
   const [showPopupCreateGroup, setShowPopupCreateGroup] = useState(false);
+  const [showPopupJoinGroup, setShowPopupJoinGroup] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasVisited = useRef(false);
@@ -59,6 +55,7 @@ export default function Home() {
   const pressAnim = useRef(new Animated.Value(0)).current;
   const joinPressAnim = useRef(new Animated.Value(0)).current;
 
+  // onPressIn | Anima botão criar grupo para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -68,6 +65,7 @@ export default function Home() {
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão criar grupo
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -82,6 +80,7 @@ export default function Home() {
     outputRange: [themas.colors.hlpink, themas.colors.hlpinkmd],
   });
 
+  // onJoinPressIn | Anima botão aceitar convite para cor pressionada
   const onJoinPressIn = () => {
     Animated.timing(joinPressAnim, {
       toValue: 1,
@@ -91,6 +90,7 @@ export default function Home() {
     }).start();
   };
 
+  // onJoinPressOut | Restaura cor do botão aceitar convite
   const onJoinPressOut = () => {
     Animated.timing(joinPressAnim, {
       toValue: 0,
@@ -105,23 +105,23 @@ export default function Home() {
     outputRange: [themas.colors.hlblue, themas.colors.hlbluemd],
   });
 
-  // fetchBalance | Exibe cache imediato e sincroniza via calculateBalance
+  // fetchBalance | Sincroniza saldo via refreshBalance do contexto
   const fetchBalance = useCallback(
     async (mode: LoadMode = "initial") => {
       if (mode === "pull") {
         setRefreshing(true);
       }
 
-      const cached = await peekBalance();
-
       if (mode !== "pull") {
         setError(null);
       }
 
+      let hadCache = false;
+
       try {
-        await refreshBalance();
+        hadCache = await refreshBalance();
       } catch (err) {
-        if (!cached) {
+        if (!hadCache) {
           setError(
             err instanceof Error
               ? err.message
@@ -188,7 +188,7 @@ export default function Home() {
           style={{ height: responsiveHeight(16) }}
           className="w-full bg-secondary z-40 border-b-[12px] border-blackapp flex flex-row items-end justify-end pt-10 pb-5 px-10"
         >
-          <Text className="text-blackapp text-2xl font-bold max-w-[60%] max-h-full w-fit">
+          <Text className="text-blackapp text-2xl font-bold max-w-[70%] max-h-full w-fit">
             Olá, {profile?.name}!
           </Text>
         </View>
@@ -385,18 +385,15 @@ export default function Home() {
           {/* Zona Supeior FIM */}
           {/* Zona inferior */}
           <View
-            style={{ height: responsiveHeight(30) }}
-            className="w-full flex flex-row items-center justify-center border-t-[10px] border-blackapp"
+            style={{ height: responsiveHeight(20) }}
+            className="w-full flex flex-row items-start justify-center border-t-[10px] border-blackapp"
           >
             <Pressable
               onPressIn={onJoinPressIn}
               onPressOut={onJoinPressOut}
               style={{ width: "100%" }}
               onPress={() => {
-                navigation.navigate("Grupos", {
-                  screen: "EntrarGrupo",
-                  params: {},
-                });
+                setShowPopupJoinGroup(true);
               }}
             >
               <Animated.View
@@ -430,10 +427,16 @@ export default function Home() {
         </View>
         {/* FIM CONTEÚDO */}
       </ScrollView>
+      {/* INICIO POPUPS */}
       <CreateGroupForm
         visible={showPopupCreateGroup}
         onClose={() => setShowPopupCreateGroup(false)}
       />
+      <JoinGroupForm
+        visible={showPopupJoinGroup}
+        onClose={() => setShowPopupJoinGroup(false)}
+      />
+      {/* FIM POPUPS */}
     </>
   );
 }

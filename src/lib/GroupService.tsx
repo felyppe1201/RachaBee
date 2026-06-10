@@ -4,6 +4,8 @@ import { supabase } from "./supabase";
 // Cache
 import { getCached, removeCached, syncCache } from "./cacheService";
 
+// Área Tipos | Modelos de dados de grupos
+
 export type Group = {
   id: string;
   name: string;
@@ -48,17 +50,6 @@ export type GroupInfo = {
 export type RpcActionResult = {
   success: boolean;
   message: string;
-};
-
-export type ExpensePayment = {
-  id: string;
-  paid_by: string;
-  amount: number;
-  description: string;
-  transfer_receipt_url: string | null;
-  created_at: string;
-  payer_name: string;
-  payer_avatar_url: string | null;
 };
 
 export type GroupWithCreator = Group & {
@@ -170,8 +161,7 @@ type GroupServiceContext =
   | "deleteGroup"
   | "getGroups"
   | "getGroupInfo"
-  | "createGroupInvite"
-  | "getExpensePayments";
+  | "createGroupInvite";
 
 const KNOWN_USER_MESSAGES = [
   "usuário não autenticado",
@@ -479,19 +469,6 @@ export async function createGroupInvite(
   if (!data?.group) throw new Error("Grupo não encontrado");
 
   return encodeInvitePayload(groupId, userId);
-}
-
-// getPaymentsByExpense | Retorna todos os pagamentos de uma despesa via RPC
-export async function getPaymentsByExpense(
-  expenseId: string,
-): Promise<ExpensePayment[]> {
-  const { data, error } = await supabase.rpc("GetPaymentsByExpenseUUID", {
-    expense_id: expenseId,
-  });
-
-  if (error) throwGroupServiceError("getExpensePayments", error);
-
-  return (data ?? []) as ExpensePayment[];
 }
 
 // buildInviteShareMessage | Monta texto do convite para compartilhamento nativo

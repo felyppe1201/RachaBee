@@ -16,6 +16,7 @@ export default function StackPlaceholderScreen({ title, navigation }: Props) {
       className="flex-1 items-center justify-center px-6"
       style={{ backgroundColor: themas.colors.secondary }}
     >
+      {/* INICIO CONTEÚDO */}
       <Text className="font-bold text-lg text-center">{title}</Text>
 
       <Pressable
@@ -27,6 +28,7 @@ export default function StackPlaceholderScreen({ title, navigation }: Props) {
           Voltar
         </Text>
       </Pressable>
+      {/* FIM CONTEÚDO */}
     </View>
   );
 }

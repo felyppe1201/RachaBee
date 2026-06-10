@@ -15,6 +15,8 @@ import {
 
 const DISPLAY_DURATION_MS = 8000;
 
+// Área Tipos | Modelos do banner de erro global
+
 export type ErrorMessageType = "commonError";
 
 type ErrorPayload = {
@@ -28,16 +30,7 @@ const ERROR_ICONS: Record<ErrorMessageType, LucideIcon> = {
 
 let showErrorCallback: ((payload: ErrorPayload) => void) | null = null;
 
-/*
-OBJECTIVE:
-Exibe mensagem de erro global de forma imperativa.
-
-CONTEXT:
-Pode ser chamada de qualquer tela ou modal sem precisar de estado local.
-
-IMPACT:
-Requer ErrorMessageProvider montado na raiz do app.
-*/
+// showErrorMessage | Exibe banner de erro global de forma imperativa
 export function showErrorMessage(
   message: string,
   type: ErrorMessageType = "commonError",
@@ -50,6 +43,7 @@ type ErrorMessageBannerProps = {
   type: ErrorMessageType;
 };
 
+// ErrorMessageBanner | Banner visual com ícone e texto do erro
 function ErrorMessageBanner({ message, type }: ErrorMessageBannerProps) {
   const Icon = ERROR_ICONS[type];
 
@@ -75,16 +69,7 @@ function ErrorMessageBanner({ message, type }: ErrorMessageBannerProps) {
   );
 }
 
-/*
-OBJECTIVE:
-Provê o banner de erro na raiz da aplicação.
-
-CONTEXT:
-Montado em App.tsx para sobrepor modals e navegação.
-
-IMPACT:
-Sem este provider, showErrorMessage não exibe nada.
-*/
+// ErrorMessageProvider | Provê banner de erro na raiz da aplicação
 export function ErrorMessageProvider({
   children,
 }: {

@@ -19,7 +19,7 @@ import {
 } from "react-native";
 
 // Lucide
-import { Undo2, Share2 } from "lucide-react-native";
+import { Undo2, Share2, Crown } from "lucide-react-native";
 
 // Responsividade
 import {
@@ -62,6 +62,7 @@ type AnimatedActionButtonProps = {
 
 type MemberCardProps = {
   member: GroupMemberInfo;
+  isLeader: boolean;
 };
 
 // getErrorMessage | Obtém mensagem de erro legível
@@ -149,7 +150,7 @@ function AnimatedActionButton({
 }
 
 // MemberCard | Cartão de membro com foto, dados e data de entrada
-function MemberCard({ member }: MemberCardProps) {
+function MemberCard({ member, isLeader }: MemberCardProps) {
   return (
     <View className="flex-row justify-between items-center gap-2 pr-4 py-3 border-b-[2px] border-blackapp/20">
       <View className="flex-row items-center gap-3 max-w-[70%] shrink">
@@ -167,9 +168,14 @@ function MemberCard({ member }: MemberCardProps) {
         )}
 
         <View className="shrink h-20 justify-between py-2">
-          <Text className="text-blackapp font-bold text-xl" numberOfLines={2}>
-            {member.name}
-          </Text>
+          <View className="flex-row items-center gap-1.5 shrink">
+            <Text className="text-blackapp font-bold text-xl shrink" numberOfLines={2}>
+              {member.name}
+            </Text>
+            {isLeader ? (
+              <Crown size={20} color={themas.colors.primary} />
+            ) : null}
+          </View>
           <Text className="text-hlpink text-xs mt-0.5" numberOfLines={1}>
             Deve: {formatCurrency(member.devendo)}
           </Text>
@@ -198,18 +204,20 @@ export default function MembrosGrupo({ navigation, route }: Props) {
 
   const isCreator = profile?.id === createdBy;
 
+  // handleRefresh | Sincroniza membros via GetGroupInfoByUUID
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const fresh = await calculateGroupInfo(groupId);
       setMembers(fresh.members);
     } catch {
-      // keep current data on error
+      // Mantém dados atuais se a sincronização falhar
     } finally {
       setRefreshing(false);
     }
   }, [groupId]);
 
+  // handleShareInvite | Gera convite e abre compartilhamento nativo
   const handleShareInvite = async () => {
     if (!profile?.id || loadingInvite) return;
 
@@ -254,7 +262,11 @@ export default function MembrosGrupo({ navigation, route }: Props) {
           showsVerticalScrollIndicator
         >
           {members.map((member) => (
-            <MemberCard key={member.user_id} member={member} />
+            <MemberCard
+              key={member.user_id}
+              member={member}
+              isLeader={member.user_id === createdBy}
+            />
           ))}
         </ScrollView>
       </View>

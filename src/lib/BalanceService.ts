@@ -83,19 +83,43 @@ export async function invalidateBalanceCache(): Promise<void> {
 
 // fetchGroupBalance | Chama RPC ActualBalanceByGroupUUID
 async function fetchGroupBalance(groupId: string): Promise<UserBalance> {
+  console.log("[BalanceService:ActualBalanceByGroupUUID] request", {
+    group_id: groupId,
+  });
+
   const { data, error } = await supabase.rpc("ActualBalanceByGroupUUID", {
     group_id: groupId,
   });
 
+  console.log("[BalanceService:ActualBalanceByGroupUUID] response", {
+    group_id: groupId,
+    data,
+    error: error
+      ? { message: error.message, code: error.code, details: error.details }
+      : null,
+  });
+
   if (error || !data) {
-    console.log("Erro ao calcular balance do grupo:", error?.message);
+    console.log(
+      "[BalanceService:ActualBalanceByGroupUUID] fallback EMPTY_BALANCE",
+      { group_id: groupId, reason: error ? "rpc_error" : "empty_data" },
+    );
     return EMPTY_BALANCE;
   }
 
-  return {
+  const balance = {
     devendo: data.devendo ?? 0,
     areceber: data.areceber ?? 0,
   };
+
+  console.log("[BalanceService:ActualBalanceByGroupUUID] parsed", {
+    group_id: groupId,
+    balance,
+    raw_devendo: data.devendo,
+    raw_areceber: data.areceber,
+  });
+
+  return balance;
 }
 
 // calculateGroupBalance | Consulta RPC e sincroniza cache do grupo se diferente

@@ -9,6 +9,7 @@ import { PerfilStackParamList } from "../PerfilStack";
 
 type Props = NativeStackScreenProps<PerfilStackParamList, "Sobre">;
 
+// Sobre | Tela placeholder sobre o aplicativo
 export default function Sobre({ navigation }: Props) {
   return <StackPlaceholderScreen title="Sobre" navigation={navigation} />;
 }

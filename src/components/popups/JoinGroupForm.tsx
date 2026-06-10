@@ -34,6 +34,7 @@ import {
 type JoinGroupFormProps = {
   visible: boolean;
   onClose: () => void;
+  initialInviteCode?: string;
 };
 
 type JoinGroupFormState = {
@@ -53,7 +54,9 @@ function getErrorMessage(error: unknown): string {
 export default function JoinGroupForm({
   visible,
   onClose,
+  initialInviteCode,
 }: JoinGroupFormProps) {
+  // sleep | Aguarda ms antes de fechar o modal
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -65,22 +68,25 @@ export default function JoinGroupForm({
     inviteCode: "",
   });
 
+  // resetPressAnim | Restaura animação do botão fechar
   const resetPressAnim = () => {
     pressAnim.stopAnimation();
     pressAnim.setValue(0);
   };
 
+  // resetForm | Limpa campos e animação ao abrir/fechar
   const resetForm = () => {
     resetPressAnim();
-    setState({ inviteCode: "" });
     setLoading(false);
+    setState({ inviteCode: initialInviteCode ?? "" });
   };
 
   useEffect(() => {
     if (!visible) return;
     resetForm();
-  }, [visible]);
+  }, [visible, initialInviteCode]);
 
+  // handleClose | Fecha modal com delay para animação do X
   const handleClose = async () => {
     if (showXFlag || loading) return;
     setXFlag(true);
@@ -90,10 +96,12 @@ export default function JoinGroupForm({
     setXFlag(false);
   };
 
+  // handleInviteCodeChange | Atualiza código do convite no estado
   const handleInviteCodeChange = (text: string) => {
     setState((prev) => ({ ...prev, inviteCode: text }));
   };
 
+  // handleJoin | Valida e entra no grupo via GroupService
   const handleJoin = async () => {
     if (loading) return;
 
@@ -116,6 +124,7 @@ export default function JoinGroupForm({
     }
   };
 
+  // onPressIn | Anima botão fechar para cor pressionada
   const onPressIn = () => {
     Animated.timing(pressAnim, {
       toValue: 1,
@@ -125,6 +134,7 @@ export default function JoinGroupForm({
     }).start();
   };
 
+  // onPressOut | Restaura cor do botão fechar
   const onPressOut = () => {
     Animated.timing(pressAnim, {
       toValue: 0,
@@ -153,12 +163,13 @@ export default function JoinGroupForm({
         <Pressable
           style={{
             width: responsiveWidth(90),
-            minHeight: responsiveHeight(34),
-            maxHeight: responsiveHeight(40),
+            paddingTop: responsiveHeight(1),
+            gap: responsiveHeight(2),
           }}
-          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-center justify-start z-[101]"
+          className="bg-white p-4 border-[12px] border-black relative flex flex-col items-stretch justify-start z-[101]"
           onPress={(event) => event.stopPropagation()}
         >
+          {/* INICIO CABEÇALHO */}
           <Pressable
             onPress={handleClose}
             className="absolute top-4 right-4 z-50"
@@ -171,35 +182,50 @@ export default function JoinGroupForm({
             </Animated.View>
           </Pressable>
 
-          <Text className="text-4xl text-blackapp self-start top-2 font-black w-full z-30 pr-12">
-            Entrar em um Grupo
+          <Text
+            style={{ paddingRight: responsiveWidth(14) }}
+            className="text-4xl text-blackapp self-start font-black w-full z-30"
+          >
+            Aceitar Convite
           </Text>
+          {/* FIM CABEÇALHO */}
 
-          <View className="flex flex-col items-center justify-center gap-4 top-8 w-full z-30">
+          {/* INICIO FORMULÁRIO */}
+          <View
+            style={{ gap: responsiveHeight(2) }}
+            className="flex flex-col items-stretch w-full z-30"
+          >
             <Text className="text-sm text-blprimary self-start font-semibold">
               Cole o código do convite que você recebeu para entrar no grupo.
             </Text>
             <TextInput
-              placeholder="Código do convite"
+              placeholder="Cole o código aqui"
               value={state.inviteCode}
               onChangeText={handleInviteCodeChange}
-              editable={!loading}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              style={{ minHeight: responsiveHeight(10) }}
               className="border-[3px] border-blackapp p-2 text-blackapp text-base font-medium w-full"
             />
             <Pressable
-              className={`bg-hlblue w-[100%] py-2 pr-2 pb-4 items-center flex-row justify-center gap-2 ${loading ? "opacity-70" : ""}`}
+              className="bg-hlblue w-full py-3 items-center justify-center self-stretch"
               onPress={handleJoin}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text className="text-xl text-white font-bold">ENTRAR</Text>
+                <Text className="text-xl text-white font-bold">
+                  ENTRAR NO GRUPO
+                </Text>
               )}
             </Pressable>
           </View>
+          {/* FIM FORMULÁRIO */}
         </Pressable>
       </Pressable>
     </Modal>

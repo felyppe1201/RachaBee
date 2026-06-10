@@ -1,6 +1,8 @@
 // AsyncStorage
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Área Cache | Operações de persistência local
+
 // prefixo que identifica todas as chaves de cache da aplicação
 const CACHE_PREFIX = "@cache:";
 
