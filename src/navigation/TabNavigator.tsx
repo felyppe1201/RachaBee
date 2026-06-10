@@ -24,8 +24,8 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 
 // Páginas das tabs
 import Home from "../pages/home/home";
-import Grupos from "../pages/grupos/grupos";
-import Atividade from "../pages/atividade/atividade";
+import GruposStack from "../pages/grupos/GruposStack";
+import AtividadeStack from "../pages/atividade/AtividadeStack";
 import PerfilStack from "../pages/perfil/PerfilStack";
 
 // Temas
@@ -244,7 +244,7 @@ export default function TabNavigator() {
         />
         <Tab.Screen
           name="Grupos"
-          component={Grupos}
+          component={GruposStack}
           options={{
             tabBarLabel: "Meus Grupos",
             tabBarIcon: ({ color, size }) => (
@@ -254,7 +254,7 @@ export default function TabNavigator() {
         />
         <Tab.Screen
           name="Atividade"
-          component={Atividade}
+          component={AtividadeStack}
           options={{
             tabBarLabel: "Atividade",
             tabBarIcon: ({ color, size }) => (
