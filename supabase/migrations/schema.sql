@@ -665,3 +665,102 @@ create policy "avatars_insert" on storage.objects
 
 create policy "avatars_select" on storage.objects
   for select using (bucket_id = 'avatars');
+
+-- CreateExpense | cria uma expense no grupo
+create or replace function public."CreateExpense"(
+  group_id uuid,
+  description text,
+  amount numeric,
+  receipt_url text default null
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  new_expense_id uuid;
+  total_members integer;
+  val_por_participante numeric;
+begin
+  if not exists (
+    select 1 from group_members gm
+    where gm.group_id = "CreateExpense".group_id and gm.user_id = uid
+  ) then
+    return json_build_object('success', false, 'message', 'Usuario nao e membro do grupo');
+  end if;
+
+  insert into expenses (group_id, paid_by, amount, description, receipt_url)
+  values (group_id, uid, amount, description, receipt_url)
+  returning id into new_expense_id;
+
+  select count(*) into total_members
+  from group_members
+  where group_members.group_id = "CreateExpense".group_id
+  and joined_at <= now();
+
+  val_por_participante := case when total_members > 0 then amount / total_members else 0 end;
+
+  return json_build_object(
+    'success', true,
+    'expense_id', new_expense_id,
+    'total_members', total_members,
+    'val_por_participante', val_por_participante
+  );
+end;
+$$;
+
+-- CreatePayment | cria um payment para uma expense
+create or replace function public."CreatePayment"(
+  expense_id uuid,
+  description text,
+  transfer_receipt_url text default null
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  exp record;
+  total_members integer;
+  val_por_participante numeric;
+  new_payment_id uuid;
+begin
+  select e.id, e.amount, e.group_id, e.created_at, e.paid_by into exp
+  from expenses e where e.id = "CreatePayment".expense_id;
+
+  if exp.id is null then
+    return json_build_object('success', false, 'message', 'Expense nao encontrada');
+  end if;
+
+  if exp.paid_by = uid then
+    return json_build_object('success', false, 'message', 'Quem pagou nao pode registrar payment para si mesmo');
+  end if;
+
+  if exists (
+    select 1 from payments p
+    where p.expense_id = "CreatePayment".expense_id and p.paid_by = uid
+  ) then
+    return json_build_object('success', false, 'message', 'Usuario ja registrou payment para essa expense');
+  end if;
+
+  select count(*) into total_members
+  from group_members
+  where group_id = exp.group_id and joined_at <= exp.created_at;
+
+  val_por_participante := case when total_members > 0 then exp.amount / total_members else 0 end;
+
+  insert into payments (expense_id, group_id, paid_by, amount, description, transfer_receipt_url)
+  values (expense_id, exp.group_id, uid, val_por_participante, description, transfer_receipt_url)
+  returning id into new_payment_id;
+
+  return json_build_object(
+    'success', true,
+    'payment_id', new_payment_id,
+    'amount', val_por_participante
+  );
+end;
+$$;
