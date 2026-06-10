@@ -5,16 +5,16 @@ import React, { createContext, useCallback, useContext, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 // Cache
-import { clearAllCaches, getCached, setCached } from "../lib/cacheService";
+import { areCacheEqual, clearAllCaches, getCached, setCached } from "../lib/cacheService";
 
 // Balance
-import { getBalance, invalidateBalanceCache } from "../lib/BalanceService";
+import { calculateBalance, peekBalance } from "../lib/BalanceService";
 
 const CACHE_KEY_SELF = "@cache:user:self";
 
 export type UserProfile = {
   id: string;
-  nome: string;
+  name: string;
   email: string;
   avatar_url: string | null;
   created_at: string;
@@ -46,31 +46,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const loadUser = useCallback(async (userId: string) => {
     // perfil
     const cached = await getCached<UserProfile>(CACHE_KEY_SELF);
-    if (cached) {
+    if (cached?.id === userId) {
       setProfile(cached);
     } else {
       const { data, error } = await supabase
         .from("users")
-        .select("id, nome, email, avatar_url, created_at")
+        .select("id, name, email, avatar_url, created_at")
         .eq("id", userId)
         .single();
 
       if (!error && data) {
-        setProfile(data as UserProfile);
+        setProfile(data);
         await setCached(CACHE_KEY_SELF, data);
       }
     }
 
-    // balance (cache ou cálculo inicial)
-    const bal = await getBalance();
-    setBalance(bal);
+    // balance: cache imediato + sincronização via RPC
+    const cachedBalance = await peekBalance();
+    if (cachedBalance) {
+      setBalance(cachedBalance);
+    }
+
+    const freshBalance = await calculateBalance();
+    setBalance((prev) =>
+      areCacheEqual(prev, freshBalance) ? prev : freshBalance
+    );
   }, []);
 
-  // refreshBalance | força recálculo do balance e atualiza o contexto
+  // refreshBalance | recalcula balance e atualiza contexto só se mudou
   const refreshBalance = useCallback(async () => {
-    await invalidateBalanceCache();
-    const bal = await getBalance();
-    setBalance(bal);
+    const freshBalance = await calculateBalance();
+    setBalance((prev) =>
+      areCacheEqual(prev, freshBalance) ? prev : freshBalance
+    );
   }, []);
 
   // clearUser | reseta tudo e limpa caches
@@ -81,7 +89,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ profile, balance, loadUser, clearUser, refreshBalance }}>
+    <UserContext.Provider
+      value={{ profile, balance, loadUser, clearUser, refreshBalance }}
+    >
       {children}
     </UserContext.Provider>
   );

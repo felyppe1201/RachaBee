@@ -43,3 +43,19 @@ export async function setCached<T>(key: string, value: T): Promise<void> {
 export async function removeCached(key: string): Promise<void> {
   await AsyncStorage.removeItem(key);
 }
+
+// areCacheEqual | Compara cache com dados frescos
+export function areCacheEqual<T>(cached: T | null, fresh: T): boolean {
+  return JSON.stringify(cached) === JSON.stringify(fresh);
+}
+
+// syncCache | Grava cache somente quando os dados forem diferentes
+export async function syncCache<T>(cacheKey: string, fresh: T): Promise<T> {
+  const cached = await getCached<T>(cacheKey);
+
+  if (!areCacheEqual(cached, fresh)) {
+    await setCached(cacheKey, fresh);
+  }
+
+  return fresh;
+}

@@ -4,7 +4,11 @@ import "./global.css";
 import { useEffect } from "react";
 
 // React Native
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
+
+// Expo
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
 
 // Páginas
 import Login from "./src/pages/login";
@@ -18,6 +22,21 @@ import { useAuth } from "./src/hooks/useAuth";
 // Context
 import { UserProvider, useUser } from "./src/context/UserContext";
 
+// ErrorMessage
+import { ErrorMessageProvider } from "./src/components/interface/ErrorMessage";
+
+// Temas
+import { themas } from "./src/global/themes";
+
+function useAndroidNavigationBar() {
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    NavigationBar.setBackgroundColorAsync(themas.colors.blprimary);
+    NavigationBar.setButtonStyleAsync("light");
+  }, []);
+}
+
 // AppContent | separado do App para poder consumir o UserProvider
 function AppContent() {
   const { session, loading } = useAuth();
@@ -30,7 +49,7 @@ function AppContent() {
     } else {
       clearUser();
     }
-  }, [session, loading]);
+  }, [session, loading, loadUser, clearUser]);
 
   if (loading) {
     return (
@@ -49,9 +68,16 @@ function AppContent() {
 }
 
 export default function App() {
+  useAndroidNavigationBar();
+
   return (
-    <UserProvider>
-      <AppContent />
-    </UserProvider>
+    <>
+      <StatusBar style="dark" />
+      <UserProvider>
+        <ErrorMessageProvider>
+          <AppContent />
+        </ErrorMessageProvider>
+      </UserProvider>
+    </>
   );
 }

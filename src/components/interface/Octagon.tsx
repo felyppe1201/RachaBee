@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, ViewStyle, LayoutChangeEvent } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
+import Svg, { Polygon, Defs, Filter, FeDropShadow } from "react-native-svg";
 import { themas } from "../../global/themes";
 
 type Props = {
@@ -68,12 +68,25 @@ export const Octagon: React.FC<Props> = ({
           height={size.height}
           viewBox="-2 -2 104 104"
           preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
         >
+          <Defs>
+            <Filter id="hardShadow">
+              <FeDropShadow
+                dx="6"
+                dy="6"
+                stdDeviation="1"
+                floodColor="black"
+                floodOpacity="0.65"
+              />
+            </Filter>
+          </Defs>
           <Polygon
             points={pts}
             fill={fill}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            filter="url(#hardShadow)"
           />
         </Svg>
       )}
