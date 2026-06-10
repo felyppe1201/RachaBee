@@ -411,7 +411,7 @@ begin
     and not exists (select 1 from payments p where p.expense_id = e.id and p.paid_by = uid)
   loop
     select count(*) into total_members from group_members
-    where group_id = exp.group_id and joined_at <= exp.created_at;
+    where group_members.group_id = exp.group_id and joined_at <= exp.created_at;
 
     if total_members > 0 then
       devendo := devendo + (exp.amount / total_members);
@@ -424,7 +424,7 @@ begin
     where e.paid_by = uid and e.group_id = "ActualBalanceByGroupUUID".group_id
   loop
     select count(*) into total_members from group_members
-    where group_id = exp.group_id and joined_at <= exp.created_at;
+    where group_members.group_id = exp.group_id and joined_at <= exp.created_at;
 
     select count(*) into members_who_paid
     from payments p
@@ -666,6 +666,19 @@ create policy "avatars_insert" on storage.objects
 create policy "avatars_select" on storage.objects
   for select using (bucket_id = 'avatars');
 
+insert into storage.buckets (id, name, public)
+values ('receipts', 'receipts', true)
+on conflict (id) do nothing;
+
+create policy "receipts_insert" on storage.objects
+  for insert with check (
+    bucket_id = 'receipts'
+    and auth.role() = 'authenticated'
+  );
+
+create policy "receipts_select" on storage.objects
+  for select using (bucket_id = 'receipts');
+
 -- CreateExpense | cria uma expense no grupo
 create or replace function public."CreateExpense"(
   group_id uuid,
@@ -708,6 +721,69 @@ begin
     'total_members', total_members,
     'val_por_participante', val_por_participante
   );
+end;
+$$;
+
+-- DeleteExpense | encerra despesa (apenas quem registrou pode chamar)
+create or replace function public."DeleteExpense"(expense_id uuid)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if not exists (
+    select 1 from expenses e where e.id = "DeleteExpense".expense_id and e.paid_by = uid
+  ) then
+    return json_build_object('success', false, 'message', 'Apenas quem registrou a despesa pode encerrá-la');
+  end if;
+
+  delete from expenses where id = "DeleteExpense".expense_id;
+
+  return json_build_object('success', true, 'message', 'Despesa encerrada com sucesso');
+end;
+$$;
+
+-- GetPaymentsByExpenseUUID | retorna pagamentos de uma expense com dados do pagador
+create or replace function public."GetPaymentsByExpenseUUID"(expense_id uuid)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  result json;
+begin
+  if not exists (
+    select 1 from expenses e
+    inner join group_members gm on gm.group_id = e.group_id
+    where e.id = "GetPaymentsByExpenseUUID".expense_id
+    and gm.user_id = uid
+  ) then
+    return '[]'::json;
+  end if;
+
+  select json_agg(
+    json_build_object(
+      'id', p.id,
+      'paid_by', p.paid_by,
+      'amount', p.amount,
+      'description', p.description,
+      'transfer_receipt_url', p.transfer_receipt_url,
+      'created_at', p.created_at,
+      'payer_name', u.name,
+      'payer_avatar_url', u.avatar_url
+    )
+    order by p.created_at asc
+  ) into result
+  from payments p
+  inner join users u on u.id = p.paid_by
+  where p.expense_id = "GetPaymentsByExpenseUUID".expense_id;
+
+  return coalesce(result, '[]'::json);
 end;
 $$;
 

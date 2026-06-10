@@ -6,7 +6,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 
 // Lucide
-import { Undo2, X } from "lucide-react-native";
+import { Undo2, X, Check, ImagePlus } from "lucide-react-native";
 
 // React Native
 import {
@@ -16,10 +16,14 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   Modal,
 } from "react-native";
+
+// Expo
+import * as ImagePicker from "expo-image-picker";
 
 // Responsividade
 import {
@@ -36,17 +40,26 @@ import { themas } from "../../../global/themes";
 // Cache
 import { areCacheEqual } from "../../../lib/cacheService";
 
+// Context
+import { useUser } from "../../../context/UserContext";
+
 // GroupService
 import {
   calculateGroupInfo,
+  getPaymentsByExpense,
   peekGroupInfo,
+  type ExpensePayment,
   type GroupExpenseInfo,
   type GroupInfo,
+  type GroupMemberInfo,
 } from "../../../lib/GroupService";
+
+// ExpenseService
+import { createPayment, deleteExpense } from "../../../lib/ExpenseService";
 
 type Props = NativeStackScreenProps<GruposStackParamList, "DetalheExpense">;
 
-type LoadMode = "initial" | "silent" | "pull";
+type LoadMode = "initial" | "silent";
 
 type AnimatedActionButtonProps = {
   baseColor: string;
@@ -59,7 +72,6 @@ type AnimatedActionButtonProps = {
   children: ReactNode;
 };
 
-// formatCurrency | Formata valor monetário
 function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", {
     style: "currency",
@@ -67,7 +79,6 @@ function formatCurrency(value: number): string {
   });
 }
 
-// formatExpenseDate | Formata data da despesa para leitura
 function formatExpenseDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -76,7 +87,6 @@ function formatExpenseDate(iso: string): string {
   });
 }
 
-// resolveExpense | Localiza despesa no retorno de GetGroupInfoByUUID
 function resolveExpense(
   groupInfo: GroupInfo | null,
   expenseId: string,
@@ -84,7 +94,14 @@ function resolveExpense(
   return groupInfo?.expenses.find((item) => item.id === expenseId) ?? null;
 }
 
-// AnimatedActionButton | Botão com animação para cor md ao pressionar
+function resolvePayer(
+  paidBy: string,
+  members: GroupMemberInfo[],
+): { name: string; avatar_url: string | null } {
+  const member = members.find((m) => m.user_id === paidBy);
+  return { name: member?.name ?? "Desconhecido", avatar_url: member?.avatar_url ?? null };
+}
+
 function AnimatedActionButton({
   baseColor,
   pressedColor,
@@ -129,11 +146,7 @@ function AnimatedActionButton({
       style={{ height, width }}
     >
       <Animated.View
-        style={{
-          backgroundColor: bgColor,
-          height,
-          width,
-        }}
+        style={{ backgroundColor: bgColor, height, width }}
         className={`flex flex-row items-center justify-center relative ${borderClassName}`}
       >
         {children}
@@ -142,12 +155,8 @@ function AnimatedActionButton({
   );
 }
 
-type ExpenseDetailFieldProps = {
-  label: string;
-  value: string;
-};
+type ExpenseDetailFieldProps = { label: string; value: string };
 
-// ExpenseDetailField | Rótulo e valor de um campo da despesa
 function ExpenseDetailField({ label, value }: ExpenseDetailFieldProps) {
   return (
     <View className="w-full gap-1">
@@ -159,15 +168,10 @@ function ExpenseDetailField({ label, value }: ExpenseDetailFieldProps) {
   );
 }
 
-type ReceiptThumbnailProps = {
-  receiptUrl: string;
-  onPress: () => void;
-};
+type ReceiptThumbnailProps = { receiptUrl: string; onPress: () => void };
 
-// ReceiptThumbnail | Preview quadrado do comprovante
 function ReceiptThumbnail({ receiptUrl, onPress }: ReceiptThumbnailProps) {
   const thumbnailSize = responsiveWidth(28);
-
   return (
     <Pressable onPress={onPress} className="self-start">
       <View
@@ -185,17 +189,27 @@ function ReceiptThumbnail({ receiptUrl, onPress }: ReceiptThumbnailProps) {
   );
 }
 
-// DetalheExpense | Detalhes da despesa a partir do cache do grupo
 export default function DetalheExpense({ navigation, route }: Props) {
   const { groupId, expenseId } = route.params;
+  const { profile } = useUser();
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
+  const [payments, setPayments] = useState<ExpensePayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [showFullscreenReceipt, setShowFullscreenReceipt] = useState(false);
   const hasVisited = useRef(false);
 
   const expense = resolveExpense(groupInfo, expenseId);
+  const members = groupInfo?.members ?? [];
+  const payer = expense ? resolvePayer(expense.paid_by, members) : null;
 
-  // fetchGroupInfo | Exibe cache imediato e sincroniza via calculateGroupInfo
+  const isCreator = Boolean(profile?.id && expense?.paid_by === profile.id);
+  const hasCurrentUserPaid = payments.some((p) => p.paid_by === profile?.id);
+  const allPaid = expense ? expense.payments_faltantes === 0 : false;
+  const showCloseButton = isCreator && allPaid && Boolean(expense);
+  const showPayButton = !isCreator && !hasCurrentUserPaid && Boolean(expense);
+  const showExtraButton = showCloseButton || showPayButton;
+
   const fetchGroupInfo = useCallback(
     async (mode: LoadMode = "initial") => {
       const cached = await peekGroupInfo(groupId);
@@ -219,21 +233,99 @@ export default function DetalheExpense({ navigation, route }: Props) {
     [groupId],
   );
 
+  const fetchPayments = useCallback(async () => {
+    try {
+      const fresh = await getPaymentsByExpense(expenseId);
+      setPayments(fresh);
+    } catch {
+      // RPC pode não existir ainda no Supabase
+    }
+  }, [expenseId]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchGroupInfo(hasVisited.current ? "silent" : "initial");
+      const mode = hasVisited.current ? "silent" : "initial";
+      fetchGroupInfo(mode);
+      fetchPayments();
       hasVisited.current = true;
-    }, [fetchGroupInfo]),
+    }, [fetchGroupInfo, fetchPayments]),
   );
+
+  const handlePickAndPay = async () => {
+    if (actionLoading) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permissão negada", "Precisamos de acesso à galeria para enviar o comprovante.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    setActionLoading(true);
+    try {
+      await createPayment({
+        expenseId,
+        groupId,
+        description: expense?.description ?? "Pagamento",
+        transferReceiptUri: result.assets[0].uri,
+      });
+      const [freshGroup, freshPayments] = await Promise.all([
+        calculateGroupInfo(groupId),
+        getPaymentsByExpense(expenseId),
+      ]);
+      setGroupInfo(freshGroup);
+      setPayments(freshPayments);
+    } catch (err) {
+      Alert.alert(
+        "Erro",
+        err instanceof Error ? err.message : "Não foi possível registrar o pagamento.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteExpense = () => {
+    if (actionLoading) return;
+
+    Alert.alert(
+      "Encerrar despesa",
+      "Todos os membros pagaram. Deseja encerrar esta despesa?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Encerrar",
+          style: "destructive",
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              await deleteExpense(expenseId, groupId);
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert(
+                "Erro",
+                err instanceof Error ? err.message : "Não foi possível encerrar a despesa.",
+              );
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View className="flex-1 flex flex-col items-center justify-center">
-      <View
-        style={{
-          height: responsiveHeight(5),
-          width: responsiveWidth(100),
-        }}
-      />
+      <View style={{ height: responsiveHeight(5), width: responsiveWidth(100) }} />
+
       <View className="flex-1 flex flex-row items-center justify-center border-t-[8px] border-blackapp">
         <View
           style={{ width: responsiveWidth(100) }}
@@ -246,10 +338,7 @@ export default function DetalheExpense({ navigation, route }: Props) {
             {loading && !expense ? (
               <ActivityIndicator size="small" color={themas.colors.hlpink} />
             ) : (
-              <Text
-                className="font-bold text-2xl text-center"
-                numberOfLines={2}
-              >
+              <Text className="font-bold text-2xl text-center" numberOfLines={2}>
                 {expense?.description ?? "Despesa"}
               </Text>
             )}
@@ -267,10 +356,7 @@ export default function DetalheExpense({ navigation, route }: Props) {
           >
             {loading && !expense ? (
               <View className="flex-1 items-center justify-center py-8">
-                <ActivityIndicator
-                  size="large"
-                  color={themas.colors.primary}
-                />
+                <ActivityIndicator size="large" color={themas.colors.primary} />
               </View>
             ) : !expense ? (
               <Text className="text-blackapp text-center font-bold px-4 py-8">
@@ -278,23 +364,62 @@ export default function DetalheExpense({ navigation, route }: Props) {
               </Text>
             ) : (
               <>
+                <ExpenseDetailField label="Descrição" value={expense.description} />
+                <ExpenseDetailField label="Pago por" value={payer?.name ?? "Desconhecido"} />
+                <ExpenseDetailField label="Valor total" value={formatCurrency(expense.amount)} />
+                <ExpenseDetailField label="Participantes" value={String(expense.total_members)} />
                 <ExpenseDetailField
-                  label="Valor"
-                  value={formatCurrency(expense.amount)}
+                  label="Valor por participante"
+                  value={formatCurrency(expense.val_por_participante)}
                 />
                 <ExpenseDetailField
-                  label="Descrição"
-                  value={expense.description}
+                  label="Pagamentos realizados"
+                  value={`${expense.payments_feitos} de ${expense.total_members - 1}`}
                 />
                 <ExpenseDetailField
                   label="Data de criação"
                   value={formatExpenseDate(expense.created_at)}
                 />
+
+                {payments.length > 0 ? (
+                  <View className="w-full gap-2">
+                    <Text className="text-sm text-blackapp font-bold">Quem já pagou</Text>
+                    {payments.map((p) => (
+                      <View
+                        key={p.id}
+                        className="flex-row items-center gap-3 py-2 border-b-[2px] border-blackapp/10"
+                      >
+                        {p.payer_avatar_url ? (
+                          <Image
+                            source={{ uri: p.payer_avatar_url }}
+                            className="w-9 h-9 rounded-full bg-zinc-200 shrink-0"
+                          />
+                        ) : (
+                          <View className="w-9 h-9 rounded-full bg-hlblue items-center justify-center shrink-0">
+                            <Text className="text-white font-bold text-sm">
+                              {p.payer_name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <View className="flex-1">
+                          <Text className="text-blackapp font-bold text-sm" numberOfLines={1}>
+                            {p.payer_name}
+                          </Text>
+                          <Text className="text-blackapp/60 text-xs mt-0.5">
+                            {formatExpenseDate(p.created_at)}
+                          </Text>
+                        </View>
+                        <Text className="text-hlblue font-bold text-sm">
+                          {formatCurrency(p.amount)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
                 {expense.receipt_url ? (
                   <View className="w-full gap-1">
-                    <Text className="text-sm text-blackapp font-bold">
-                      Comprovante
-                    </Text>
+                    <Text className="text-sm text-blackapp font-bold">Comprovante da despesa</Text>
                     <ReceiptThumbnail
                       receiptUrl={expense.receipt_url}
                       onPress={() => setShowFullscreenReceipt(true)}
@@ -309,10 +434,54 @@ export default function DetalheExpense({ navigation, route }: Props) {
 
       <View
         style={{
-          height: responsiveHeight(10),
+          height: responsiveHeight(showExtraButton ? 18 : 10),
           width: responsiveWidth(100),
         }}
       >
+        {showCloseButton ? (
+          <AnimatedActionButton
+            baseColor={themas.colors.hlpink}
+            pressedColor={themas.colors.hlpinkmd}
+            height={responsiveHeight(8)}
+            width={responsiveWidth(100)}
+            borderClassName="border-b-[4px] border-blackapp"
+            onPress={handleDeleteExpense}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Check size={32} color="#fff" className="absolute left-6" />
+                <Text className="text-xl text-white font-bold text-center px-12">
+                  ENCERRAR DESPESA
+                </Text>
+              </>
+            )}
+          </AnimatedActionButton>
+        ) : showPayButton ? (
+          <AnimatedActionButton
+            baseColor={themas.colors.hlpink}
+            pressedColor={themas.colors.hlpinkmd}
+            height={responsiveHeight(8)}
+            width={responsiveWidth(100)}
+            borderClassName="border-b-[4px] border-blackapp"
+            onPress={handlePickAndPay}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <ImagePlus size={32} color="#fff" className="absolute left-6" />
+                <Text className="text-xl text-white font-bold text-center px-12">
+                  ENVIAR COMPROVANTE
+                </Text>
+              </>
+            )}
+          </AnimatedActionButton>
+        ) : null}
+
         <AnimatedActionButton
           baseColor={themas.colors.primary}
           pressedColor={themas.colors.mdprimary}
@@ -320,6 +489,7 @@ export default function DetalheExpense({ navigation, route }: Props) {
           width={responsiveWidth(100)}
           borderClassName="border-b-[8px] border-blackapp"
           onPress={() => navigation.goBack()}
+          disabled={actionLoading}
         >
           <Undo2 size={40} color="#fff" className="left-6 absolute mb-0.5" />
           <Text className="text-2xl text-white font-bold">VOLTAR</Text>

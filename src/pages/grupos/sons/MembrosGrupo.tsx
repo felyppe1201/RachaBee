@@ -2,7 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 // React
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 
 // React Native
 import {
@@ -15,6 +15,7 @@ import {
   Easing,
   ActivityIndicator,
   Share,
+  RefreshControl,
 } from "react-native";
 
 // Lucide
@@ -38,6 +39,7 @@ import { useUser } from "../../../context/UserContext";
 // GroupService
 import {
   buildInviteShareMessage,
+  calculateGroupInfo,
   createGroupInvite,
   type GroupMemberInfo,
 } from "../../../lib/GroupService";
@@ -188,11 +190,25 @@ function MemberCard({ member }: MemberCardProps) {
 
 // MembrosGrupo | Lista de membros recebida via navegação
 export default function MembrosGrupo({ navigation, route }: Props) {
-  const { groupId, groupName, members, createdBy } = route.params;
+  const { groupId, groupName, members: initialMembers, createdBy } = route.params;
   const { profile } = useUser();
+  const [members, setMembers] = useState<GroupMemberInfo[]>(initialMembers);
   const [loadingInvite, setLoadingInvite] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isCreator = profile?.id === createdBy;
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const fresh = await calculateGroupInfo(groupId);
+      setMembers(fresh.members);
+    } catch {
+      // keep current data on error
+    } finally {
+      setRefreshing(false);
+    }
+  }, [groupId]);
 
   const handleShareInvite = async () => {
     if (!profile?.id || loadingInvite) return;
@@ -213,6 +229,15 @@ export default function MembrosGrupo({ navigation, route }: Props) {
     }
   };
 
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      colors={[themas.colors.hlpink, themas.colors.hlblue]}
+      tintColor={themas.colors.hlpink}
+    />
+  );
+
   return (
     <View className="flex-1 flex flex-col">
       <View
@@ -222,14 +247,24 @@ export default function MembrosGrupo({ navigation, route }: Props) {
         }}
       />
       <View className="flex-1 border-t-[8px] border-b-[8px] border-blackapp">
-        <ScrollView className="flex-1" contentContainerStyle={{}}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{}}
+          refreshControl={refreshControl}
+          showsVerticalScrollIndicator
+        >
           {members.map((member) => (
             <MemberCard key={member.user_id} member={member} />
           ))}
         </ScrollView>
       </View>
 
-      <View style={{ width: responsiveWidth(100) }} className="pb-4">
+      <View
+        style={{
+          width: responsiveWidth(100),
+          height: responsiveHeight(isCreator ? 18 : 10),
+        }}
+      >
         {isCreator ? (
           <AnimatedActionButton
             baseColor={themas.colors.hlpink}

@@ -40,6 +40,7 @@ export type ActivityListItem = {
   id: string;
   type: ActivityType;
   amount: number;
+  description: string;
   created_at: string;
 };
 
@@ -153,6 +154,7 @@ export function buildActivityList(feed: ActivityFeed): ActivityListItem[] {
     id: item.id,
     type: "expense",
     amount: item.amount,
+    description: item.description,
     created_at: item.created_at,
   }));
 
@@ -160,6 +162,7 @@ export function buildActivityList(feed: ActivityFeed): ActivityListItem[] {
     id: item.id,
     type: "payment",
     amount: item.amount,
+    description: item.description,
     created_at: item.created_at,
   }));
 

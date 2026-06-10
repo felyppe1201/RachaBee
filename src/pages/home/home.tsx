@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 
 // React Navigation
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 // IMG's
 import Logo from "../../assets/logo.png";
@@ -30,7 +30,6 @@ import { signOut } from "../../lib/authService";
 
 // Popups
 import CreateGroupForm from "../../components/popups/CreateGroupForm";
-import JoinGroupForm from "../../components/popups/JoinGroupForm";
 
 // Balance
 import { peekBalance } from "../../lib/BalanceService";
@@ -49,9 +48,9 @@ import { moderateScale } from "react-native-size-matters";
 type LoadMode = "initial" | "silent" | "pull";
 
 export default function Home() {
+  const navigation = useNavigation<any>();
   const { profile, balance, refreshBalance } = useUser();
   const [showPopupCreateGroup, setShowPopupCreateGroup] = useState(false);
-  const [showPopupJoinGroup, setShowPopupJoinGroup] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasVisited = useRef(false);
@@ -394,7 +393,10 @@ export default function Home() {
               onPressOut={onJoinPressOut}
               style={{ width: "100%" }}
               onPress={() => {
-                setShowPopupJoinGroup(true);
+                navigation.navigate("Grupos", {
+                  screen: "EntrarGrupo",
+                  params: {},
+                });
               }}
             >
               <Animated.View
@@ -431,10 +433,6 @@ export default function Home() {
       <CreateGroupForm
         visible={showPopupCreateGroup}
         onClose={() => setShowPopupCreateGroup(false)}
-      />
-      <JoinGroupForm
-        visible={showPopupJoinGroup}
-        onClose={() => setShowPopupJoinGroup(false)}
       />
     </>
   );
