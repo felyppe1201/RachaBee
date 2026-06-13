@@ -204,6 +204,7 @@ export default function JoinGroupForm({
               onChangeText={handleInviteCodeChange}
               autoCapitalize="none"
               autoCorrect={false}
+              spellCheck={false}
               editable={!loading}
               multiline
               numberOfLines={4}
