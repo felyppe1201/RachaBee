@@ -92,63 +92,39 @@ export async function invalidateGroupsListCache(): Promise<void> {
 }
 
 // Área Convite | Codificação e decodificação de códigos de convite
+//
+// O convite carrega dois UUIDs em texto puro (groupId e creatorId), separados
+// por ":". Evitamos Base64 de propósito: ele mistura maiúsculas/minúsculas e os
+// símbolos +/=, que o teclado/autocorreção do Android costuma corromper ao
+// colar (trocando caracteres e inserindo espaços). UUID é só [0-9a-f-], bem
+// mais resistente. Na entrada, extraímos os UUIDs por regex, então tolera
+// espaços, quebras de linha e a mensagem inteira colada junto.
 
 const INVITE_SEPARATOR = ":";
 
-// toBase64 | Codifica string em Base64 compatível com React Native
-function toBase64(value: string): string {
-  const binary = encodeURIComponent(value).replace(
-    /%([0-9A-F]{2})/g,
-    (_, hex) => String.fromCharCode(parseInt(hex, 16)),
-  );
-
-  if (typeof globalThis.btoa !== "function") {
-    throw new Error("Codificação de convite indisponível");
-  }
-
-  return globalThis.btoa(binary);
-}
-
-// fromBase64 | Decodifica Base64 para texto
-function fromBase64(value: string): string {
-  if (typeof globalThis.atob !== "function") {
-    throw new Error("Decodificação de convite indisponível");
-  }
-
-  const binary = globalThis.atob(value.trim());
-  const bytes = Array.from(
-    binary,
-    (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`,
-  );
-
-  return decodeURIComponent(bytes.join(""));
-}
+// UUID_REGEX | Encontra UUIDs dentro de um texto qualquer
+const UUID_REGEX =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
 // encodeInvitePayload | Gera código de convite a partir de groupId e userId
 function encodeInvitePayload(groupId: string, userId: string): string {
-  return toBase64(`${groupId}${INVITE_SEPARATOR}${userId}`);
+  return `${groupId}${INVITE_SEPARATOR}${userId}`;
 }
 
-// decodeInvitePayload | Extrai groupId e creatorId do código de convite
+// decodeInvitePayload | Extrai groupId e creatorId de qualquer texto colado
 function decodeInvitePayload(inviteCode: string): {
   groupId: string;
   creatorId: string;
 } {
-  const decoded = fromBase64(inviteCode);
-  const separatorIndex = decoded.indexOf(INVITE_SEPARATOR);
+  // Remove espaços/quebras inseridos no meio e normaliza para minúsculas
+  const cleaned = inviteCode.replace(/\s+/g, "").toLowerCase();
+  const matches = cleaned.match(UUID_REGEX);
 
-  if (separatorIndex === -1) {
+  if (!matches || matches.length < 2) {
     throw new Error("Código de convite inválido");
   }
 
-  const groupId = decoded.slice(0, separatorIndex);
-  const creatorId = decoded.slice(separatorIndex + 1);
-
-  if (!groupId || !creatorId) {
-    throw new Error("Código de convite inválido");
-  }
-
-  return { groupId, creatorId };
+  return { groupId: matches[0], creatorId: matches[1] };
 }
 
 // Área Erros | Tratamento centralizado de falhas do serviço
