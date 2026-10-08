@@ -23,22 +23,6 @@ O **RachaBee** nasceu para acabar com a confusão de "quem pagou o quê" e "quem
 - **Atividade**: histórico de tudo o que aconteceu nos seus grupos
 - **Perfil**: dados da conta, ajuda, termos de uso e política de privacidade
 
-### 📸 Screenshots
-
-<!-- Substitua os caminhos abaixo pelas suas imagens (ex.: docs/screenshots/login.png) -->
-
-| Login | Cadastro | Home |
-| :---: | :---: | :---: |
-| <img src="COLE_AQUI_A_PRINT_DO_LOGIN" width="220" /> | <img src="COLE_AQUI_A_PRINT_DO_CADASTRO" width="220" /> | <img src="COLE_AQUI_A_PRINT_DA_HOME" width="220" /> |
-
-| Grupos | Detalhe do grupo | Nova despesa |
-| :---: | :---: | :---: |
-| <img src="COLE_AQUI_A_PRINT_DOS_GRUPOS" width="220" /> | <img src="COLE_AQUI_A_PRINT_DO_DETALHE_DO_GRUPO" width="220" /> | <img src="COLE_AQUI_A_PRINT_DA_NOVA_DESPESA" width="220" /> |
-
-| Pagamento | Atividade | Perfil |
-| :---: | :---: | :---: |
-| <img src="COLE_AQUI_A_PRINT_DO_PAGAMENTO" width="220" /> | <img src="COLE_AQUI_A_PRINT_DA_ATIVIDADE" width="220" /> | <img src="COLE_AQUI_A_PRINT_DO_PERFIL" width="220" /> |
-
 ### 🛠️ Tecnologias
 
 | Camada | Tecnologia |
