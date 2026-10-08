@@ -35,6 +35,39 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | null>(null);
 
+// ensureUserProfile | Recria o perfil em public.users a partir da sessão do Auth
+// Cobre o caso de a linha ter sido removida direto no banco enquanto a conta
+// permanece no Auth (o trigger handle_new_user só roda em cadastros novos).
+async function ensureUserProfile(
+  userId: string,
+): Promise<UserProfile | null> {
+  const { data: authData } = await supabase.auth.getUser();
+  const authUser = authData.user;
+
+  if (!authUser || authUser.id !== userId) return null;
+
+  const email = authUser.email ?? "";
+  const metadata = authUser.user_metadata ?? {};
+  const name =
+    (typeof metadata.name === "string" && metadata.name) ||
+    (email ? email.split("@")[0] : "Usuário");
+  const avatarUrl =
+    typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .upsert(
+      { id: userId, name, email, avatar_url: avatarUrl },
+      { onConflict: "id" },
+    )
+    .select("id, name, email, avatar_url, created_at")
+    .single();
+
+  if (error || !data) return null;
+
+  return data;
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [balance, setBalance] = useState<UserBalance>({
@@ -53,11 +86,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .from("users")
         .select("id, name, email, avatar_url, created_at")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         setProfile(data);
         await setCached(CACHE_KEY_SELF, data);
+      } else if (!data) {
+        // Perfil ausente em public.users (ex: linha deletada direto no banco,
+        // mas a conta continua no Auth). Recria a partir dos dados da sessão.
+        const recovered = await ensureUserProfile(userId);
+        if (recovered) {
+          setProfile(recovered);
+          await setCached(CACHE_KEY_SELF, recovered);
+        }
       }
     }
 
