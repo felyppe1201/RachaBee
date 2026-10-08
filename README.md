@@ -1,9 +1,6 @@
 <p align="center">
   <img src="src/assets/logo_completo.png" alt="RachaBee" width="260" />
 </p>
-
-<h1 align="center">RachaBee 🐝</h1>
-
 <p align="center">
   App mobile para <b>dividir despesas em grupo</b>: viagens, rolês, contas da casa, o que precisar.<br/>
   Feito com <b>React Native + Expo</b> e <b>Supabase</b>.
