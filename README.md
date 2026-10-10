@@ -248,8 +248,3 @@ Confira se ambos estão na mesma rede ou use `npx expo start --tunnel`.
 O script já foi executado nesse projeto. Use um projeto novo do Supabase ou apague as tabelas antes de rodar de novo.
 
 ---
-
-## 📚 Documentação extra
-
-- [`docs/rpcs.md`](docs/rpcs.md): referência de todas as funções (RPCs) do Supabase usadas pelo app
-- [`docs/cache-pattern.md`](docs/cache-pattern.md): como funciona o cache local dos dados
